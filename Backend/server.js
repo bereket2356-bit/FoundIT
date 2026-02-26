@@ -11,7 +11,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ROUTES
 app.use("/api/auth", require("./routes/auth"));
+app.use("/api/items", require("./routes/items")); // 👈 ADD THIS
 
 app.get("/", (req, res) => {
   res.send("API Running...");

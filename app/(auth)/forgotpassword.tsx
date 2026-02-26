@@ -45,7 +45,7 @@ export default function ForgotPassword() {
 
         <TouchableOpacity
           style={{ marginTop: 15 }}
-          onPress={() => router.push("../login")}
+          onPress={() => router.push("/(auth)/login") }
         >
           <Text style={styles.back}>Back to Login</Text>
         </TouchableOpacity>

@@ -6,65 +6,57 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  GestureResponderEvent,
-  
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-export default function SignUp() {
-  const [secure, setSecure] = useState(true);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const router = useRouter();
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-  function handleSignup(event: GestureResponderEvent): void {
-    throw new Error("Function not implemented.");
-  }
+export default function Login() {
+  const [secure, setSecure] = useState(true);
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Logo */}
       <View style={styles.logoContainer}>
         <View style={styles.logoBox}>
           <Ionicons name="cube-outline" size={40} color="#000" />
         </View>
         <Text style={styles.title}>FoundIT</Text>
+        <Text style={styles.subtitle}>Campus Lost & Found Platform</Text>
       </View>
 
+      {/* Card */}
       <View style={styles.card}>
-        {/* Toggle */}
+        {/* Toggle Buttons */}
         <View style={styles.toggleContainer}>
-          <TouchableOpacity onPress={() => router.push("../login")}>
-            <Text style={styles.inactiveText}>Login</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.activeTab}>
-            <Text style={styles.activeText}>Sign Up</Text>
+            <Text style={styles.activeText}>Login</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
+            <Text style={styles.inactiveText}>Sign Up</Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.label}>Full Name</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your full name"
-          value={name}
-          onChangeText={setName}
-        />
-
+        {/* Email */}
         <Text style={styles.label}>Email</Text>
         <TextInput
-          style={styles.input}
           placeholder="your.email@university.edu"
+          placeholderTextColor="#999"
+          style={styles.input}
           value={email}
           onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
         />
 
+        {/* Password */}
         <Text style={styles.label}>Password</Text>
         <View style={styles.passwordContainer}>
           <TextInput
-            placeholder="Create password"
+            placeholder="Enter your password"
+            placeholderTextColor="#999"
             secureTextEntry={secure}
             style={{ flex: 1 }}
             value={password}
@@ -79,48 +71,48 @@ export default function SignUp() {
           </TouchableOpacity>
         </View>
 
-        {/* Create Account Button */}
-<TouchableOpacity
+        {/* Button */}
+        <TouchableOpacity
   style={styles.button}
   onPress={async () => {
     try {
-      const response = await fetch(
-        "http://192.168.1.2:5000/api/auth/signup", // change if using real phone
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name,
-            email,
-            password,
-          }),
-        }
-      );
+      const response = await fetch("http://192.168.1.2:5000/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
 
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert("Success", "Account created successfully 🎉");
-        console.log(data);
+              router.replace("/(tabs)/home");
       } else {
         Alert.alert("Error", data.message);
       }
-
     } catch (error) {
-      console.log(error);
       Alert.alert("Error", "Cannot connect to server");
     }
   }}
 >
-  <Text style={styles.buttonText}>Create Account</Text>
+          <Text style={styles.buttonText}>Login</Text>          
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.push("/(auth)/forgotpassword")}>
+  <Text style={styles.forgot}>Forgot password?</Text>
 </TouchableOpacity>
       </View>
+
+      <Text style={styles.footer}>
+        By continuing, you agree to our Terms of Service and Privacy Policy
+      </Text>
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
@@ -142,6 +134,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 24,
     fontWeight: "bold",
+  },
+  subtitle: {
+    color: "#ccc",
+    marginBottom: 20,
   },
   card: {
     backgroundColor: "#f2f2f2",
@@ -198,5 +194,15 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  forgot: {
+    textAlign: "center",
+    marginTop: 15,
+  },
+  footer: {
+    textAlign: "center",
+    color: "#aaa",
+    fontSize: 12,
+    marginTop: 20,
   },
 });
