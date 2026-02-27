@@ -1,82 +1,81 @@
 // app/index.tsx
-import React, { Key, useEffect, useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
+import axios from "axios";
+import React, { Key, useCallback, useEffect, useState } from "react";
 import {
-  View,
+  Image,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  Image,
-  StyleSheet,
-  StatusBar,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useItems } from "../../context/Itemscontext";
-import axios from 'axios';
-import { useFocusEffect } from "@react-navigation/native";
-import { useCallback } from "react";
-import { RefreshControl } from "react-native";
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useUser } from "../../context/Usercontext";
 type Item = {
+  user: any;
+  status: any;
   _id: Key | null | undefined;
   id: string;
   title: string;
   image: string;
   category: string;
-  type: 'found' | 'lost';
+  type: "found" | "lost";
   location: string;
   createdAt: string;
 };
 
 export default function HomeScreen() {
-  const [activeTab, setActiveTab] = useState<'found' | 'lost'>('found');
+  const [activeTab, setActiveTab] = useState<"found" | "lost">("found");
   const [items, setItems] = useState<Item[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedType, setSelectedType] = useState<"all" | "found" | "lost">("all");
+  const [selectedType, setSelectedType] = useState<"all" | "found" | "lost">(
+    "all",
+  );
   const [refreshing, setRefreshing] = useState(false);
+  const { user } = useUser();
 
-useFocusEffect(
-  useCallback(() => {
+  useFocusEffect(
+    useCallback(() => {
+      fetchItems();
+    }, []),
+  );
+
+  const fetchItems = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/items");
+      setItems(res.data);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  useEffect(() => {
     fetchItems();
-  }, [])
-);
+  }, []);
 
-const fetchItems = async () => {
-  try {
-    const res = await axios.get(
-      "http://192.168.1.2:5000/api/items"
-    );
-    setItems(res.data);
-  } catch (error) {
-    console.log(error);
-  }
-};
-useEffect(() => {
-  fetchItems();
-}, []);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchItems();
+    setRefreshing(false);
+  };
 
-const onRefresh = async () => {
-  setRefreshing(true);
-  await fetchItems();
-  setRefreshing(false);
-};
+  const filteredItems = items.filter((item) => {
+    const matchesType = selectedType === "all" || item.type === selectedType;
 
- const filteredItems = items.filter((item) => {
-  const matchesType =
-    selectedType === "all" || item.type === selectedType;
+    const matchesSearch =
+      item.title.toLowerCase().includes(search.toLowerCase()) ||
+      item.category.toLowerCase().includes(search.toLowerCase()) ||
+      item.location.toLowerCase().includes(search.toLowerCase());
 
-  const matchesSearch =
-    item.title.toLowerCase().includes(search.toLowerCase()) ||
-    item.category.toLowerCase().includes(search.toLowerCase()) ||
-    item.location.toLowerCase().includes(search.toLowerCase());
-
-  return matchesType && matchesSearch;
-});
-
-  
+    return matchesType && matchesSearch;
+  });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
       <StatusBar barStyle="dark-content" />
 
       {/* Header */}
@@ -92,7 +91,12 @@ const onRefresh = async () => {
 
       {/* Search */}
       <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
+        <Ionicons
+          name="search-outline"
+          size={20}
+          color="#888"
+          style={styles.searchIcon}
+        />
         <TextInput
           value={search}
           onChangeText={setSearch}
@@ -104,33 +108,60 @@ const onRefresh = async () => {
 
       {/* Found / Lost Toggle */}
       <View style={styles.toggleContainer}>
-  <TouchableOpacity
-    style={[styles.toggleButton, selectedType === "all" && styles.toggleActive]}
-    onPress={() => setSelectedType("all")}
-  >
-    <Text style={selectedType === "all" ? styles.toggleTextActive : styles.toggleText}>
-      All
-    </Text>
-  </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.toggleButton,
+            selectedType === "all" && styles.toggleActive,
+          ]}
+          onPress={() => setSelectedType("all")}
+        >
+          <Text
+            style={
+              selectedType === "all"
+                ? styles.toggleTextActive
+                : styles.toggleText
+            }
+          >
+            All
+          </Text>
+        </TouchableOpacity>
 
-  <TouchableOpacity
-    style={[styles.toggleButton, selectedType === "found" && styles.toggleActive]}
-    onPress={() => setSelectedType("found")}
-  >
-    <Text style={selectedType === "found" ? styles.toggleTextActive : styles.toggleText}>
-      Found
-    </Text>
-  </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.toggleButton,
+            selectedType === "found" && styles.toggleActive,
+          ]}
+          onPress={() => setSelectedType("found")}
+        >
+          <Text
+            style={
+              selectedType === "found"
+                ? styles.toggleTextActive
+                : styles.toggleText
+            }
+          >
+            Found
+          </Text>
+        </TouchableOpacity>
 
-  <TouchableOpacity
-    style={[styles.toggleButton, selectedType === "lost" && styles.toggleActive]}
-    onPress={() => setSelectedType("lost")}
-  >
-    <Text style={selectedType === "lost" ? styles.toggleTextActive : styles.toggleText}>
-      Lost
-    </Text>
-  </TouchableOpacity>
-</View>
+        <TouchableOpacity
+          style={[
+            styles.toggleButton,
+            selectedType === "lost" && styles.toggleActive,
+          ]}
+          onPress={() => setSelectedType("lost")}
+        >
+          <Text
+            style={
+              selectedType === "lost"
+                ? styles.toggleTextActive
+                : styles.toggleText
+            }
+          >
+            Lost
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Filters */}
       <TouchableOpacity style={styles.filtersRow}>
@@ -138,11 +169,14 @@ const onRefresh = async () => {
       </TouchableOpacity>
 
       {/* Item List */}
-      <ScrollView style={styles.feed}  refreshControl={
-    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-  }>
+      <ScrollView
+        style={styles.feed}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {filteredItems.map((item) => (
-        <View key={item._id} style={styles.card}>
+          <View key={item._id} style={styles.card}>
             <Image source={{ uri: item.image }} style={styles.cardImage} />
             <View style={styles.cardContent}>
               <Text style={styles.cardTitle}>{item.title}</Text>
@@ -152,7 +186,7 @@ const onRefresh = async () => {
                 </View>
                 <View style={[styles.tag, styles.statusTag]}>
                   <Text style={[styles.tagText, styles.statusText]}>
-                    {item.type === 'found' ? 'Found' : 'Lost'}
+                    {item.type === "found" ? "Found" : "Lost"}
                   </Text>
                 </View>
               </View>
@@ -160,9 +194,44 @@ const onRefresh = async () => {
                 <Ionicons name="location-outline" size={14} color="#666" />
                 <Text style={styles.metaText}>{item.location}</Text>
               </View>
-              <Text style={styles.timeText}>{new Date(item.createdAt).toLocaleString()}</Text>  
+              <Text style={styles.timeText}>
+                {new Date(item.createdAt).toLocaleString()}
+              </Text>
             </View>
-            {activeTab === 'found' && (
+            <View style={styles.actionsRow}>
+              {/* show status */}
+              <View style={styles.statusPill}>
+                <Text style={styles.statusPillText}>
+                  {item.status?.toUpperCase() || "OPEN"}
+                </Text>
+              </View>
+              {/* claim button: only show if open and not the owner */}
+              {item.status === "open" &&
+                user?.id !== (item.user?._id || item.user) && (
+                  <TouchableOpacity
+                    style={styles.claimButton}
+                    onPress={async () => {
+                      try {
+                        const res = await axios.post(
+                          `http://localhost:5000/api/items/${item._id}/claim`,
+                          { user: user?.id },
+                        );
+                        // update local items array
+                        setItems((prev) =>
+                          prev.map((it) =>
+                            it._id === item._id ? res.data : it,
+                          ),
+                        );
+                      } catch (err) {
+                        console.log("Claim error", err);
+                      }
+                    }}
+                  >
+                    <Text style={styles.claimButtonText}>Claim</Text>
+                  </TouchableOpacity>
+                )}
+            </View>
+            {activeTab === "found" && (
               <View style={styles.foundBadge}>
                 <Text style={styles.foundText}>Found</Text>
               </View>
@@ -176,77 +245,96 @@ const onRefresh = async () => {
 
 const styles = StyleSheet.create({
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  appName: { fontSize: 24, fontWeight: 'bold', color: '#000' },
-  subtitle: { fontSize: 13, color: '#666' },
+  appName: { fontSize: 24, fontWeight: "bold", color: "#000" },
+  subtitle: { fontSize: 13, color: "#666" },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     marginHorizontal: 16,
     marginVertical: 8,
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 48,
     borderWidth: 1,
-    borderColor: '#eee',
-  
+    borderColor: "#eee",
   },
   searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 16, color: '#000' },
+  searchInput: { flex: 1, fontSize: 16, color: "#000" },
   toggleContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginHorizontal: 16,
     marginVertical: 8,
-    backgroundColor: '#eee',
+    backgroundColor: "#eee",
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  toggleButton: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  toggleActive: { backgroundColor: '#000' },
-  toggleText: { fontWeight: '600', color: '#666', fontSize: 15 },
-  toggleTextActive: { color: '#fff' },
+  toggleButton: { flex: 1, paddingVertical: 12, alignItems: "center" },
+  toggleActive: { backgroundColor: "#000" },
+  toggleText: { fontWeight: "600", color: "#666", fontSize: 15 },
+  toggleTextActive: { color: "#fff" },
   filtersRow: { paddingHorizontal: 16, paddingVertical: 12 },
-  filtersText: { fontSize: 15, fontWeight: '600', color: '#000' },
+  filtersText: { fontSize: 15, fontWeight: "600", color: "#000" },
   feed: { paddingHorizontal: 16 },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     marginBottom: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: '#eee',
-    position: 'relative',
+    borderColor: "#eee",
+    position: "relative",
   },
-  cardImage: { width: '100%', height: 180, resizeMode: 'cover' },
+  cardImage: { width: "100%", height: 180, resizeMode: "cover" },
   cardContent: { padding: 12 },
-  cardTitle: { fontSize: 17, fontWeight: 'bold', marginBottom: 6 },
-  tagRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  cardTitle: { fontSize: 17, fontWeight: "bold", marginBottom: 6 },
+  tagRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
   tag: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
-  tagText: { fontSize: 13, color: '#444', fontWeight: '500' },
-  statusTag: { backgroundColor: '#e0ffe0' },
-  statusText: { color: '#006600', fontWeight: '600' },
-  meta: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  metaText: { fontSize: 14, color: '#666', marginLeft: 4 },
-  timeText: { fontSize: 13, color: '#888' },
+  tagText: { fontSize: 13, color: "#444", fontWeight: "500" },
+  statusTag: { backgroundColor: "#e0ffe0" },
+  statusText: { color: "#006600", fontWeight: "600" },
+  meta: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
+  metaText: { fontSize: 14, color: "#666", marginLeft: 4 },
+  timeText: { fontSize: 13, color: "#888" },
   foundBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 12,
     right: 12,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
   },
-  foundText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
+  foundText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 12,
+  },
+  claimButton: {
+    backgroundColor: "#088b15",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  claimButtonText: { color: "#fff", fontWeight: "600" },
+  statusPill: {
+    backgroundColor: "#eee",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusPillText: { fontSize: 12, color: "#333", fontWeight: "600" },
 });

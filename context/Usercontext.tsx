@@ -4,6 +4,7 @@ interface User {
   name: string;
   email: string;
   avatar: string;
+  id?: string;
 }
 
 interface UserContextType {
@@ -18,6 +19,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     name: "John Doe",
     email: "john@example.com",
     avatar: "https://via.placeholder.com/150",
+    id: "",
   });
 
   const updateUser = (data: Partial<User>) => {

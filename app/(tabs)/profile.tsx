@@ -1,8 +1,10 @@
+import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
 import React, { ReactNode, useCallback, useEffect, useState } from "react";
 import {
   Image,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -12,9 +14,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useUser } from "../../context/Usercontext";
-import axios from "axios";
-import { RefreshControl } from "react-native";
-
 
 type Item = {
   description: ReactNode;
@@ -34,20 +33,25 @@ export default function ProfileScreen() {
   const totalPosts = items.length;
   const foundCount = items.filter((item) => item.type === "found").length;
   const lostCount = items.filter((item) => item.type === "lost").length;
-  
-  
+
   useFocusEffect(
     useCallback(() => {
       fetchItems();
-    }, [])
+    }, []),
   );
-  
+
   const fetchItems = async () => {
     try {
-      const res = await axios.get(
-        "http://192.168.1.2:5000/api/items"
-      );
-      setItems(res.data);
+      const res = await axios.get("http://localhost:5000/api/items");
+      const all = res.data || [];
+      const filtered = all.filter((item: any) => {
+        if (!item.user) return false;
+        if (typeof item.user === "string") return item.user === user.id;
+        if (item.user._id) return item.user._id === user.id;
+        if (item.user.id) return item.user.id === user.id;
+        return false;
+      });
+      setItems(filtered);
     } catch (error) {
       console.log(error);
     }
@@ -55,13 +59,12 @@ export default function ProfileScreen() {
   useEffect(() => {
     fetchItems();
   }, []);
-  
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchItems();
     setRefreshing(false);
   };
-
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -101,9 +104,12 @@ export default function ProfileScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
       <StatusBar barStyle="dark-content" />
 
-      <ScrollView contentContainerStyle={{ padding: 16 }} refreshControl={
-    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-  }>
+      <ScrollView
+        contentContainerStyle={{ padding: 16 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Profile Header */}
         <View style={styles.profileCard}>
           <TouchableOpacity onPress={pickImage}>
@@ -135,35 +141,35 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-{/* My Posts */}
-<Text style={styles.sectionTitle}>My Posts</Text>
-{items.length === 0 ? (
-  <Text style={{ textAlign: "center", marginTop: 20 }}>
-    You haven’t posted anything yet.
-  </Text>
-) : (
-  items.map((item) => (
-    <View key={item._id} style={styles.rowCard}>
-      {item.image && (
-        <Image source={{ uri: item.image }} style={styles.rowImage} />
-      )}
-      <View style={styles.rowContent}>
-        <Text style={styles.rowTitle}>{item.title}</Text>
+        {/* My Posts */}
+        <Text style={styles.sectionTitle}>My Posts</Text>
+        {items.length === 0 ? (
+          <Text style={{ textAlign: "center", marginTop: 20 }}>
+            You haven’t posted anything yet.
+          </Text>
+        ) : (
+          items.map((item) => (
+            <View key={item._id} style={styles.rowCard}>
+              {item.image && (
+                <Image source={{ uri: item.image }} style={styles.rowImage} />
+              )}
+              <View style={styles.rowContent}>
+                <Text style={styles.rowTitle}>{item.title}</Text>
 
-        <Text
-          style={[
-            styles.rowType,
-            item.type === "found" ? styles.foundText : styles.lostText,
-          ]}
-        >
-          {item.type.toUpperCase()}
-        </Text>
+                <Text
+                  style={[
+                    styles.rowType,
+                    item.type === "found" ? styles.foundText : styles.lostText,
+                  ]}
+                >
+                  {item.type.toUpperCase()}
+                </Text>
 
-        <Text style={styles.rowLocation}>{item.location}</Text>
-      </View>
-    </View>
-  ))
-)}
+                <Text style={styles.rowLocation}>{item.location}</Text>
+              </View>
+            </View>
+          ))
+        )}
 
         {/* Logout Button */}
         <TouchableOpacity
@@ -178,104 +184,104 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-rowCard: {
-  flexDirection: "row",
-  backgroundColor: "#fff",
-  borderRadius: 14,
-  padding: 10,
-  marginBottom: 12,
-  alignItems: "center",
-  elevation: 2,
-},
+  rowCard: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 12,
+    alignItems: "center",
+    elevation: 2,
+  },
 
-rowImage: {
-  width: 70,
-  height: 70,
-  borderRadius: 10,
-  marginRight: 12,
-},
+  rowImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 10,
+    marginRight: 12,
+  },
 
-rowContent: {
-  flex: 1,
-},
+  rowContent: {
+    flex: 1,
+  },
 
-rowTitle: {
-  fontSize: 14,
-  fontWeight: "bold",
-},
+  rowTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+  },
 
-rowType: {
-  fontSize: 12,
-  marginTop: 4,
-},
+  rowType: {
+    fontSize: 12,
+    marginTop: 4,
+  },
 
-foundText: {
-  color: "green",
-},
+  foundText: {
+    color: "green",
+  },
 
-lostText: {
-  color: "red",
-},
+  lostText: {
+    color: "red",
+  },
 
-rowLocation: {
-  fontSize: 12,
-  color: "#666",
-  marginTop: 2,
-},
+  rowLocation: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
+  },
   postCard: {
-  backgroundColor: "#fff",
-  borderRadius: 16,
-  marginBottom: 16,
-  overflow: "hidden",
-  elevation: 3,
-},
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginBottom: 16,
+    overflow: "hidden",
+    elevation: 3,
+  },
 
-postImage: {
-  width: "100%",
-  height: 100,
-},
+  postImage: {
+    width: "100%",
+    height: 100,
+  },
 
-postContent: {
-  padding: 14,
-},
+  postContent: {
+    padding: 14,
+  },
 
-postTitle: {
-  fontSize: 16,
-  fontWeight: "bold",
-  marginBottom: 4,
-},
+  postTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
 
-postLocation: {
-  fontSize: 13,
-  color: "#666",
-  marginBottom: 6,
-},
+  postLocation: {
+    fontSize: 13,
+    color: "#666",
+    marginBottom: 6,
+  },
 
-postDescription: {
-  fontSize: 14,
-  color: "#444",
-},
+  postDescription: {
+    fontSize: 14,
+    color: "#444",
+  },
 
-badge: {
-  alignSelf: "flex-start",
-  paddingHorizontal: 10,
-  paddingVertical: 4,
-  borderRadius: 12,
-  marginBottom: 8,
-},
+  badge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
 
-foundBadge: {
-  backgroundColor: "#d4edda",
-},
+  foundBadge: {
+    backgroundColor: "#d4edda",
+  },
 
-lostBadge: {
-  backgroundColor: "#f8d7da",
-},
+  lostBadge: {
+    backgroundColor: "#f8d7da",
+  },
 
-badgeText: {
-  fontSize: 11,
-  fontWeight: "bold",
-},
+  badgeText: {
+    fontSize: 11,
+    fontWeight: "bold",
+  },
   profileCard: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -395,5 +401,4 @@ badgeText: {
     fontSize: 15,
     fontWeight: "bold",
   },
-  
 });

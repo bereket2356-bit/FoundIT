@@ -1,22 +1,23 @@
+import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
+import axios from "axios";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
+  Alert,
   Image,
   ScrollView,
   StatusBar,
-  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
 import { useItems } from "../../context/Itemscontext";
-import axios from "axios";
-import { router } from "expo-router";
-import { Picker } from "@react-native-picker/picker";
+import { useUser } from "../../context/Usercontext";
 type ItemType = "found" | "lost";
 
 export default function PostScreen() {
@@ -27,64 +28,62 @@ export default function PostScreen() {
   const [description, setDescription] = useState<string>("");
   const [image, setImage] = useState<string | null>(null);
   const { addItem } = useItems();
+  const { user } = useUser();
 
   const pickImage = async () => {
-  const permission =
-    await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-  if (!permission.granted) {
-    alert("Permission is required!");
-    return;
-  }
+    if (!permission.granted) {
+      alert("Permission is required!");
+      return;
+    }
 
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ["images"],
-    allowsEditing: true,
-    aspect: [4, 3],
-    quality: 0.8,
-  });
-  
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
 
-  if (!result.canceled) {
-    setImage(result.assets[0].uri);
-  }
-};
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
 
- const handleSubmit = async () => {
-  if (!title || !category || !location || !description || !image) {
-    Alert.alert("Missing Fields", "Please fill in all fields.");
-    return;
-  }
+  const handleSubmit = async () => {
+    if (!title || !category || !location || !description || !image) {
+      Alert.alert("Missing Fields", "Please fill in all fields.");
+      return;
+    }
 
-  try {
-    const response = await axios.post(
-      "http://192.168.1.2:5000/api/items",
-      {
+    try {
+      const response = await axios.post("http://localhost:5000/api/items", {
         type,
         title,
         category,
         location,
         description,
         image,
-      }
-    );
+        user: user?.id || null,
+      });
 
-    Alert.alert("Success", "Your item has been posted!");
+      Alert.alert("Success", "Your item has been posted!");
+      // add to local context
+      if (response && response.data) addItem(response.data);
       // 🔥 CLEAR FORM
-    setTitle("");
-    setCategory("");
-    setLocation("");
-    setDescription("");
-    setImage(null);
-    setType("found");
+      setTitle("");
+      setCategory("");
+      setLocation("");
+      setDescription("");
+      setImage(null);
+      setType("found");
 
-    router.replace("/(tabs)/home"); // go back to home
-
-  } catch (error) {
-    console.log("POST ERROR:", error);
-    Alert.alert("Error", "Could not post item.");
-  }
-};
+      router.replace("/(tabs)/home"); // go back to home
+    } catch (error) {
+      console.log("POST ERROR:", error);
+      Alert.alert("Error", "Could not post item.");
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
@@ -97,22 +96,34 @@ export default function PostScreen() {
         {/* Lost / Found Toggle */}
         <View style={styles.toggleContainer}>
           <TouchableOpacity
-            style={[styles.toggleButton, type === "found" && styles.toggleActive]}
+            style={[
+              styles.toggleButton,
+              type === "found" && styles.toggleActive,
+            ]}
             onPress={() => setType("found")}
           >
             <Text
-              style={[styles.toggleText, type === "found" && styles.toggleTextActive]}
+              style={[
+                styles.toggleText,
+                type === "found" && styles.toggleTextActive,
+              ]}
             >
               Found
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.toggleButton, type === "lost" && styles.toggleActive]}
+            style={[
+              styles.toggleButton,
+              type === "lost" && styles.toggleActive,
+            ]}
             onPress={() => setType("lost")}
           >
             <Text
-              style={[styles.toggleText, type === "lost" && styles.toggleTextActive]}
+              style={[
+                styles.toggleText,
+                type === "lost" && styles.toggleTextActive,
+              ]}
             >
               Lost
             </Text>
@@ -141,23 +152,22 @@ export default function PostScreen() {
         />
 
         {/* Category */}
-<View style={styles.pickerContainer}>
-  <Picker
-    selectedValue={category}
-    onValueChange={(itemValue) => setCategory(itemValue)}
-    style={styles.picker}
-    dropdownIconColor="#000"
-  >
-    <Picker.Item label="Keys" value="Keys" />
-    <Picker.Item label="Electronics" value="Electronics" />
-    <Picker.Item label="Bag" value="Bag" />
-    <Picker.Item label="Phone" value="Phone" />
-    <Picker.Item label="Clothes" value="Clothes" />
-    <Picker.Item label="Documents" value="Documents" />
-    <Picker.Item label="Other" value="Other" />
-   
-  </Picker>
-</View>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={category}
+            onValueChange={(itemValue) => setCategory(itemValue)}
+            style={styles.picker}
+            dropdownIconColor="#000"
+          >
+            <Picker.Item label="Keys" value="Keys" />
+            <Picker.Item label="Electronics" value="Electronics" />
+            <Picker.Item label="Bag" value="Bag" />
+            <Picker.Item label="Phone" value="Phone" />
+            <Picker.Item label="Clothes" value="Clothes" />
+            <Picker.Item label="Documents" value="Documents" />
+            <Picker.Item label="Other" value="Other" />
+          </Picker>
+        </View>
 
         {/* Location */}
         <TextInput
@@ -191,21 +201,20 @@ export default function PostScreen() {
 }
 
 const styles = StyleSheet.create({
-pickerContainer: {
-  backgroundColor: "rgba(255, 255, 255, 0.25)", // transparent
-  borderRadius: 30, // makes it circular/rounded
-  borderWidth: 1,
-  borderColor: "rgba(255,255,255,0.4)",
-  paddingHorizontal: 15,
-  marginBottom: 16,
-  overflow: "hidden",
-},
-picker: {
-  color: "#000",
-  height: 50,
-  
-},
-  
+  pickerContainer: {
+    backgroundColor: "rgba(255, 255, 255, 0.25)", // transparent
+    borderRadius: 30, // makes it circular/rounded
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+    paddingHorizontal: 15,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  picker: {
+    color: "#000",
+    height: 50,
+  },
+
   headerTitle: {
     fontSize: 24,
     fontWeight: "bold",
@@ -258,17 +267,17 @@ picker: {
     borderRadius: 16,
   },
 
- input: {
-  backgroundColor: "rgba(255,255,255,0.6)",
-  borderRadius: 14,
-  paddingHorizontal: 16,
-  paddingVertical: 14,
-  fontSize: 16,
-  borderWidth: 1,
-  borderColor: "rgba(0,0,0,0.08)",
-  marginBottom: 16,
-  color: "#000",
-},
+  input: {
+    backgroundColor: "rgba(255,255,255,0.6)",
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
+    marginBottom: 16,
+    color: "#000",
+  },
 
   textArea: {
     height: 110,

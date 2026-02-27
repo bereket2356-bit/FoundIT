@@ -45,6 +45,21 @@ router.post("/signup", async (req, res) => {
   }
 });
 
+router.post("/", async (req, res) => {
+  const { title, description, location, type, category } = req.body;
+
+  const post = await Post.create({
+    title,
+    description,
+    location,
+    type,
+    category,
+    user: req.user.id, // VERY IMPORTANT
+  });
+
+  res.json(post);
+});
+
 
 // 🟢 LOGIN
 router.post("/login", async (req, res) => {

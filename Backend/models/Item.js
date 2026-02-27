@@ -20,7 +20,13 @@ const ItemSchema = new mongoose.Schema({
   image: String,
   status: {
     type: String,
+    enum: ["open", "pending", "claimed", "resolved"],
     default: "open",
+  },
+  claimant: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    default: null,
   },
   createdAt: {
     type: Date,

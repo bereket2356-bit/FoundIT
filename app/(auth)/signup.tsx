@@ -85,7 +85,7 @@ export default function SignUp() {
   onPress={async () => {
     try {
       const response = await fetch(
-        "http://192.168.1.2:5000/api/auth/signup", // change if using real phone
+        "http://localhost:5000/api/auth/signup",
         {
           method: "POST",
           headers: {

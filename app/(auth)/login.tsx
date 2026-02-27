@@ -1,22 +1,20 @@
-import React, { useState } from "react";
-import { Alert } from "react-native";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import {
+  Alert, StyleSheet, Text,
+  TextInput, TouchableOpacity, View
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useUser } from "../../context/Usercontext";
 
 export default function Login() {
   const [secure, setSecure] = useState(true);
   const router = useRouter();
   const [email, setEmail] = useState("");
-const [password, setPassword] = useState("");
+  const [password, setPassword] = useState("");
+  const { updateUser } = useUser();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -73,38 +71,52 @@ const [password, setPassword] = useState("");
 
         {/* Button */}
         <TouchableOpacity
-  style={styles.button}
-  onPress={async () => {
-    try {
-      const response = await fetch("http://192.168.1.2:5000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
+          style={styles.button}
+          onPress={async () => {
+            try {
+              const response = await fetch(
+                "http://localhost:5000/api/auth/login",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    email,
+                    password,
+                  }),
+                },
+              );
 
-      const data = await response.json();
+              const data = await response.json();
 
-      if (response.ok) {
-              router.replace("/(tabs)/home");
-      } else {
-        Alert.alert("Error", data.message);
-      }
-    } catch (error) {
-      Alert.alert("Error", "Cannot connect to server");
-    }
-  }}
->
-          <Text style={styles.buttonText}>Login</Text>          
+              if (response.ok) {
+                try {
+                  if (data.token)
+                    await AsyncStorage.setItem("token", data.token);
+                } catch (e) {
+                  console.log("Could not save token", e);
+                }
+                updateUser({
+                  id: data._id,
+                  name: data.name,
+                  email: data.email,
+                });
+                router.replace("/(tabs)/home");
+              } else {
+                Alert.alert("Error", data.message);
+              }
+            } catch (error) {
+              Alert.alert("Error", "Cannot connect to server");
+            }
+          }}
+        >
+          <Text style={styles.buttonText}>Login</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push("/(auth)/forgotpassword")}>
-  <Text style={styles.forgot}>Forgot password?</Text>
-</TouchableOpacity>
+          <Text style={styles.forgot}>Forgot password?</Text>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.footer}>
