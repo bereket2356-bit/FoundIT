@@ -7,6 +7,9 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const claimRoutes = require("./routes/claim");
+
+app.use("/api/claims", claimRoutes);
 
 app.use(cors());
 app.use(express.json());
