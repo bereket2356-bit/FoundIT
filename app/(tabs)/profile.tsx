@@ -3,16 +3,17 @@ import * as ImagePicker from "expo-image-picker";
 import { router, useFocusEffect } from "expo-router";
 import React, { ReactNode, useCallback, useEffect, useState } from "react";
 import {
-  Image,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Image,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { API_URL } from "../../constants/api";
 import { useUser } from "../../context/Usercontext";
 
 type Item = {
@@ -42,7 +43,7 @@ export default function ProfileScreen() {
 
   const fetchItems = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/items");
+      const res = await axios.get(`${API_URL}/items`);
       const all = res.data || [];
       const filtered = all.filter((item: any) => {
         if (!item.user) return false;
