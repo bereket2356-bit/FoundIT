@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
@@ -19,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { API_URL } from "../../constants/api";
 import { useItems } from "../../context/Itemscontext";
 import { useUser } from "../../context/Usercontext";
+import { useAlert } from "../../context/AlertContext";
 type ItemType = "found" | "lost";
 
 export default function PostScreen() {
@@ -26,10 +28,12 @@ export default function PostScreen() {
   const [title, setTitle] = useState<string>("");
   const [category, setCategory] = useState<string>("");
   const [location, setLocation] = useState<string>("");
+  const [date, setDate] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [image, setImage] = useState<string | null>(null);
-  const { addItem } = useItems();
+    const { addItem } = useItems();
   const { user } = useUser();
+  const { showAlert } = useAlert();
 
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -52,37 +56,72 @@ export default function PostScreen() {
   };
 
   const handleSubmit = async () => {
+    // date is optional for lost items
     if (!title || !category || !location || !description || !image) {
-      Alert.alert("Missing Fields", "Please fill in all fields.");
+      showAlert({ title: "Missing Fields", message: "Please fill in all required fields.", type: 'error' })
       return;
+    }
+    if (type === "found" && !date) {
+      showAlert({ title: "Missing Fields", message: "Please provide a Date Found.", type: 'error' })
+      return;
+    }
+    
+    // Check date format if provided
+    let finalDate: string | null = date;
+    if (date) {
+      const parsed = Date.parse(date);
+      if (isNaN(parsed)) {
+        showAlert({ title: "Invalid Date", message: "Please enter a valid date (e.g. YYYY-MM-DD).", type: 'error' });
+        return;
+      }
+      finalDate = new Date(parsed).toISOString();
+    } else {
+      finalDate = null;
     }
 
     try {
-      const response = await axios.post(`${API_URL}/items`, {
-        type,
-        title,
-        category,
-        location,
-        description,
-        image,
-        user: user?.id || null,
-      });
+      const token = await AsyncStorage.getItem("token");
+      const response = await axios.post(
+        `${API_URL}/items`,
+        {
+          type,
+          title,
+          category,
+          location,
+          date: finalDate,
+          description,
+          image,
+          user: user?.id || null,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
-      Alert.alert("Success", "Your item has been posted!");
+      showAlert({
+                  type: 'success',
+                  title: 'Form Submitted',
+                  message: 'Wait for admin review.',
+                  buttonText: 'Continue',
+                  onPress: () => router.replace('/(tabs)/home')
+                });
       // add to local context
       if (response && response.data) addItem(response.data);
       // 🔥 CLEAR FORM
       setTitle("");
       setCategory("");
       setLocation("");
+      setDate("");
       setDescription("");
       setImage(null);
       setType("found");
 
-      router.replace("/(tabs)/home"); // go back to home
+       // go back to home
     } catch (error) {
       console.log("POST ERROR:", error);
-      Alert.alert("Error", "Could not post item.");
+      showAlert({ title: "Error", message: (error as any).response?.data?.message || "Could not post item.", type: 'error' })
     }
   };
 
@@ -178,6 +217,14 @@ export default function PostScreen() {
           value={location}
           onChangeText={setLocation}
         />
+        {/* Date */}
+        <TextInput
+          placeholder={type === "lost" ? "Date Lost (Optional, YYYY-MM-DD)" : "Date Found (YYYY-MM-DD)"}
+          placeholderTextColor="#aaa"
+          style={styles.input}
+          value={date}
+          onChangeText={setDate}
+        />
 
         {/* Description */}
         <TextInput
@@ -197,6 +244,7 @@ export default function PostScreen() {
           </Text>
         </TouchableOpacity>
       </ScrollView>
+      
     </SafeAreaView>
   );
 }
