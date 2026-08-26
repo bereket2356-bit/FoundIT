@@ -4,7 +4,6 @@ const Claim = require("../models/Claim");
 const Item = require("../models/Item");
 const { protect, adminOnly } = require("../middleware/authMiddleware");
 
-
 /*
 =====================================
 📌 USER: CREATE CLAIM REQUEST
@@ -36,12 +35,10 @@ router.post("/", protect, async (req, res) => {
     });
 
     res.status(201).json(claim);
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
-
 
 /*
 =====================================
@@ -56,12 +53,10 @@ router.get("/", protect, adminOnly, async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json(claims);
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
-
 
 /*
 =====================================
@@ -84,12 +79,10 @@ router.patch("/:id/approve", protect, adminOnly, async (req, res) => {
     });
 
     res.json({ message: "Claim approved" });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
-
 
 /*
 =====================================
@@ -106,8 +99,12 @@ router.patch("/:id/reject", protect, adminOnly, async (req, res) => {
     claim.status = "rejected";
     await claim.save();
 
-    res.json({ message: "Claim rejected" });
+    // Re-open item so another user can claim it
+    await Item.findByIdAndUpdate(claim.item, {
+      status: "open",
+    });
 
+    res.json({ message: "Claim rejected" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
