@@ -1,17 +1,12 @@
-import React, { useState } from "react";
-import { Alert } from "react-native";
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  GestureResponderEvent,
-  
-} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import React, { useState } from "react";
+import {
+    Alert, GestureResponderEvent, StyleSheet, Text,
+    TextInput, TouchableOpacity, View
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { API_URL } from "../../constants/api";
 export default function SignUp() {
   const [secure, setSecure] = useState(true);
   const [name, setName] = useState("");
@@ -80,47 +75,42 @@ export default function SignUp() {
         </View>
 
         {/* Create Account Button */}
-<TouchableOpacity
-  style={styles.button}
-  onPress={async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/auth/signup",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name,
-            email,
-            password,
-          }),
-        }
-      );
+        <TouchableOpacity
+          style={styles.button}
+          onPress={async () => {
+            try {
+              const response = await fetch(`${API_URL}/auth/signup`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  name,
+                  email,
+                  password,
+                }),
+              });
 
-      const data = await response.json();
+              const data = await response.json();
 
-      if (response.ok) {
-        Alert.alert("Success", "Account created successfully 🎉");
-        console.log(data);
-      } else {
-        Alert.alert("Error", data.message);
-      }
-
-    } catch (error) {
-      console.log(error);
-      Alert.alert("Error", "Cannot connect to server");
-    }
-  }}
->
-  <Text style={styles.buttonText}>Create Account</Text>
-</TouchableOpacity>
+              if (response.ok) {
+                Alert.alert("Success", "Account created successfully 🎉");
+                console.log(data);
+              } else {
+                Alert.alert("Error", data.message);
+              }
+            } catch (error) {
+              console.log(error);
+              Alert.alert("Error", "Cannot connect to server");
+            }
+          }}
+        >
+          <Text style={styles.buttonText}>Create Account</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
