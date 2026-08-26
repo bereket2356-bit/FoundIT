@@ -5,17 +5,18 @@ import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-  Alert,
-  Image,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { API_URL } from "../../constants/api";
 import { useItems } from "../../context/Itemscontext";
 import { useUser } from "../../context/Usercontext";
 type ItemType = "found" | "lost";
@@ -57,7 +58,7 @@ export default function PostScreen() {
     }
 
     try {
-      const response = await axios.post("http://localhost:5000/api/items", {
+      const response = await axios.post(`${API_URL}/items`, {
         type,
         title,
         category,
