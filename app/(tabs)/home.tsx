@@ -4,17 +4,18 @@ import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
 import React, { Key, useCallback, useEffect, useState } from "react";
 import {
-  Image,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Image,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { API_URL } from "../../constants/api";
 import { useUser } from "../../context/Usercontext";
 type Item = {
   user: any;
@@ -47,7 +48,7 @@ export default function HomeScreen() {
 
   const fetchItems = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/items");
+      const res = await axios.get(`${API_URL}/items`);
       setItems(res.data);
     } catch (error) {
       console.log(error);
@@ -213,7 +214,7 @@ export default function HomeScreen() {
                     onPress={async () => {
                       try {
                         const res = await axios.post(
-                          `http://localhost:5000/api/items/${item._id}/claim`,
+                          `${API_URL}/items/${item._id}/claim`,
                           { user: user?.id },
                         );
                         // update local items array
