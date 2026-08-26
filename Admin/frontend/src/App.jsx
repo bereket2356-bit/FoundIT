@@ -1,12 +1,15 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import "./index.css"; // ← add this
 import Dashboard from "./pages/Dashboard";
+import Items from "./pages/Items";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import Items from "./pages/Items";
-import './index.css';   // ← add this
-function App() {
-  const token = localStorage.getItem("token"); // check if user is logged in
+const ProtectedRoute = ({ children }) => {
+  const token = localStorage.getItem("token");
+  return token ? children : <Navigate to="/login" />;
+};
 
+function App() {
   return (
     <BrowserRouter>
       <Routes>
@@ -17,11 +20,19 @@ function App() {
         {/* Protected routes */}
         <Route
           path="/"
-          element={token ? <Dashboard /> : <Navigate to="/login" />}
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/items"
-          element={token ? <Items /> : <Navigate to="/login" />}
+          element={
+            <ProtectedRoute>
+              <Items />
+            </ProtectedRoute>
+          }
         />
       </Routes>
     </BrowserRouter>
