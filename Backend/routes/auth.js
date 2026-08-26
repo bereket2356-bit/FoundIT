@@ -4,10 +4,10 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
-
 // 🟢 SIGNUP
 router.post("/signup", async (req, res) => {
-  const { name, email, password } = req.body;
+  let { name, email, password } = req.body;
+  if (email) email = email.trim().toLowerCase();
 
   try {
     // Check if user exists
@@ -27,11 +27,9 @@ router.post("/signup", async (req, res) => {
     });
 
     // Create token
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.status(201).json({
       _id: user._id,
@@ -39,50 +37,34 @@ router.post("/signup", async (req, res) => {
       email: user.email,
       token,
     });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-router.post("/", async (req, res) => {
-  const { title, description, location, type, category } = req.body;
-
-  const post = await Post.create({
-    title,
-    description,
-    location,
-    type,
-    category,
-    user: req.user.id, // VERY IMPORTANT
-  });
-
-  res.json(post);
-});
-
-
 // 🟢 LOGIN
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  let { email, password } = req.body;
+  if (email) email = email.trim().toLowerCase();
 
   try {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid Email or Password" });
+      return res
+        .status(400)
+        .json({ message: "Invalid Email (User not found)" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid Email or Password" });
+      return res.status(400).json({ message: "Invalid Password" });
     }
 
-    const token = jwt.sign(
-      { id: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
     res.json({
       _id: user._id,
@@ -90,7 +72,6 @@ router.post("/login", async (req, res) => {
       email: user.email,
       token,
     });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
