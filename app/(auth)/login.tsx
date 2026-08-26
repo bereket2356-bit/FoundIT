@@ -13,13 +13,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_URL } from "../../constants/api";
 import { useUser } from "../../context/Usercontext";
+import { useAlert } from "../../context/AlertContext";
 
 export default function Login() {
   const [secure, setSecure] = useState(true);
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { updateUser } = useUser();
+    const { updateUser } = useUser();
+  const { showAlert } = useAlert();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -106,12 +108,18 @@ export default function Login() {
                   name: data.name,
                   email: data.email,
                 });
-                router.replace("/(tabs)/home");
+                showAlert({
+                  type: 'success',
+                  title: 'You are now logged in',
+                  message: 'Welcome back to FoundIT.',
+                  buttonText: 'Continue',
+                  onPress: () => router.replace('/(tabs)/home')
+                });
               } else {
-                Alert.alert("Error", data.message);
+                showAlert({ title: "Error", message: data.message, type: 'error' })
               }
             } catch (error) {
-              Alert.alert("Error", "Cannot connect to server");
+              showAlert({ title: "Error", message: "Cannot connect to server", type: 'error' })
             }
           }}
         >
@@ -126,6 +134,7 @@ export default function Login() {
       <Text style={styles.footer}>
         By continuing, you agree to our Terms of Service and Privacy Policy
       </Text>
+      
     </SafeAreaView>
   );
 }
