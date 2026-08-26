@@ -3,10 +3,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  Alert, StyleSheet, Text,
-  TextInput, TouchableOpacity, View
+  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { API_URL } from "../../constants/api";
 import { useUser } from "../../context/Usercontext";
 
 export default function Login() {
@@ -47,6 +52,8 @@ export default function Login() {
           style={styles.input}
           value={email}
           onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
         />
 
         {/* Password */}
@@ -74,19 +81,16 @@ export default function Login() {
           style={styles.button}
           onPress={async () => {
             try {
-              const response = await fetch(
-                "http://localhost:5000/api/auth/login",
-                {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    email,
-                    password,
-                  }),
+              const response = await fetch(`${API_URL}/auth/login`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
                 },
-              );
+                body: JSON.stringify({
+                  email,
+                  password,
+                }),
+              });
 
               const data = await response.json();
 
