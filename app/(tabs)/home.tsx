@@ -1,22 +1,27 @@
 // app/index.tsx
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
+import * as ImagePicker from "expo-image-picker";
 import React, { Key, useCallback, useEffect, useState } from "react";
 import {
-    Image,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_URL } from "../../constants/api";
 import { useUser } from "../../context/Usercontext";
+import { useAlert } from "../../context/AlertContext";
 type Item = {
   user: any;
   status: any;
@@ -31,14 +36,25 @@ type Item = {
 };
 
 export default function HomeScreen() {
-  const [activeTab, setActiveTab] = useState<"found" | "lost">("found");
   const [items, setItems] = useState<Item[]>([]);
   const [search, setSearch] = useState("");
   const [selectedType, setSelectedType] = useState<"all" | "found" | "lost">(
     "all",
   );
   const [refreshing, setRefreshing] = useState(false);
-  const { user } = useUser();
+
+  const [claimModalVisible, setClaimModalVisible] = useState(false);
+  const [selectedItemForClaim, setSelectedItemForClaim] = useState<Item | null>(
+    null,
+  );
+  const [proofDescription, setProofDescription] = useState("");
+  const [proofImage, setProofImage] = useState<string | null>(null);
+  const [lostLocation, setLostLocation] = useState("");
+  const [lostDate, setLostDate] = useState("");
+  const [contactInfo, setContactInfo] = useState("");
+  const [submittingClaim, setSubmittingClaim] = useState(false);
+    const { user } = useUser();
+  const { showAlert } = useAlert();
 
   useFocusEffect(
     useCallback(() => {
@@ -74,6 +90,84 @@ export default function HomeScreen() {
 
     return matchesType && matchesSearch;
   });
+
+  const pickProofImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      showAlert({ title: "Permission required", message: "Sorry, we need camera roll permissions to make this work!", type: "error" });
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"], allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setProofImage(result.assets[0].uri);
+    }
+  };
+
+  const submitClaim = async () => {
+    if (!proofDescription || !contactInfo) {
+      return;
+    }
+    if (!selectedItemForClaim) return;
+
+    setSubmittingClaim(true);
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.post(
+        `${API_URL}/items/${selectedItemForClaim._id}/claim`,
+        {
+          proof_description: proofDescription,
+          proof_image: proofImage || "",
+          lost_location: lostLocation || "",
+          lost_date: lostDate || "",
+          contact_info: contactInfo,
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      // Update item in feed
+      setItems((prev) =>
+        prev.map((it) => (it._id === selectedItemForClaim._id ? res.data : it)),
+      );
+
+      showAlert({
+                  type: 'success',
+                  title: 'Form Submitted',
+                  message: 'Wait for admin review.',
+                  buttonText: 'Continue',
+                });
+
+      // Reset Modal
+      setClaimModalVisible(false);
+      setSelectedItemForClaim(null);
+      setProofDescription("");
+      setProofImage(null);
+      setLostLocation("");
+      setLostDate("");
+      setContactInfo("");
+    } catch (err: any) {
+      console.log("Claim error", err.response?.data || err);
+      const code = err.response?.data?.code;
+      if (code === "DUPLICATE_CLAIM") {
+        showAlert({ title: "Claim Error", message: "This item already has a pending claim under review.", type: 'error' })
+      } else if (code === "VALIDATION_ERROR") {
+        showAlert({ title: "Claim Error", message: "Please fill out all required fields.", type: 'error' })
+      } else if (code === "INVALID_STATE") {
+        showAlert({ title: "Claim Error", message: "Item is not available for claim.", type: 'error' })
+      } else if (err.response?.status === 401) {
+        showAlert({ title: "Claim Error", message: "Your session expired — please log in again to submit a claim.", type: 'error' })
+      } else if (err.message && err.message.includes("Network")) {
+        showAlert({ title: "Claim Error", message: "Something went wrong on our end. Please try again in a moment.", type: 'error' })
+      } else {
+        showAlert({ title: "Claim Error", message: "Something went wrong on our end. Please try again in a moment.", type: 'error' })
+      }
+    } finally {
+      setSubmittingClaim(false);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
@@ -211,28 +305,16 @@ export default function HomeScreen() {
                 user?.id !== (item.user?._id || item.user) && (
                   <TouchableOpacity
                     style={styles.claimButton}
-                    onPress={async () => {
-                      try {
-                        const res = await axios.post(
-                          `${API_URL}/items/${item._id}/claim`,
-                          { user: user?.id },
-                        );
-                        // update local items array
-                        setItems((prev) =>
-                          prev.map((it) =>
-                            it._id === item._id ? res.data : it,
-                          ),
-                        );
-                      } catch (err) {
-                        console.log("Claim error", err);
-                      }
+                    onPress={() => {
+                      setSelectedItemForClaim(item as Item);
+                      setClaimModalVisible(true);
                     }}
                   >
                     <Text style={styles.claimButtonText}>Claim</Text>
                   </TouchableOpacity>
                 )}
             </View>
-            {activeTab === "found" && (
+            {item.type === "found" && (
               <View style={styles.foundBadge}>
                 <Text style={styles.foundText}>Found</Text>
               </View>
@@ -240,6 +322,215 @@ export default function HomeScreen() {
           </View>
         ))}
       </ScrollView>
+
+      <Modal
+        visible={claimModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#f9fafb" }}>
+          <View
+            style={{
+              padding: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: "#eee",
+              backgroundColor: "#fff",
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{ fontSize: 18, fontWeight: "bold", color: "#1f2937" }}
+            >
+              Submit Claim
+            </Text>
+            <TouchableOpacity onPress={() => setClaimModalVisible(false)}>
+              <Ionicons name="close" size={24} color="#6b7280" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 20 }}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "600",
+                marginBottom: 6,
+                color: "#374151",
+              }}
+            >
+              Describe details only the owner would know *
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: "#fff",
+                borderWidth: 1,
+                borderColor: "#d1d5db",
+                borderRadius: 8,
+                padding: 12,
+                minHeight: 80,
+                textAlignVertical: "top",
+                marginBottom: 4,
+              }}
+              placeholder="e.g. lock screen photo, scratches, keychain..."
+              multiline
+              value={proofDescription}
+              onChangeText={setProofDescription}
+            />
+            {!proofDescription && submittingClaim ? (
+              <Text style={{ color: "red", fontSize: 12, marginBottom: 12 }}>
+                This field is required.
+              </Text>
+            ) : (
+              <View style={{ marginBottom: 16 }} />
+            )}
+
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "600",
+                marginBottom: 6,
+                color: "#374151",
+              }}
+            >
+              Phone or Telegram username *
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: "#fff",
+                borderWidth: 1,
+                borderColor: "#d1d5db",
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 4,
+              }}
+              placeholder="@username or 09..."
+              value={contactInfo}
+              onChangeText={setContactInfo}
+            />
+            {!contactInfo && submittingClaim ? (
+              <Text style={{ color: "red", fontSize: 12, marginBottom: 12 }}>
+                This field is required.
+              </Text>
+            ) : (
+              <View style={{ marginBottom: 16 }} />
+            )}
+
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "600",
+                marginBottom: 6,
+                color: "#374151",
+              }}
+            >
+              Photo proof{" "}
+              <Text style={{ fontWeight: "400", color: "#9ca3af" }}>
+                (optional)
+              </Text>
+            </Text>
+            <TouchableOpacity
+              onPress={pickProofImage}
+              style={{
+                backgroundColor: "#fff",
+                borderWidth: 1,
+                borderColor: "#d1d5db",
+                borderStyle: "dashed",
+                padding: 16,
+                borderRadius: 8,
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              {proofImage ? (
+                <Image
+                  source={{ uri: proofImage }}
+                  style={{ width: 60, height: 60, borderRadius: 8 }}
+                />
+              ) : (
+                <Text style={{ color: "#6b7280" }}>Tap to upload</Text>
+              )}
+            </TouchableOpacity>
+
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "600",
+                marginBottom: 6,
+                color: "#374151",
+              }}
+            >
+              Where you lost it{" "}
+              <Text style={{ fontWeight: "400", color: "#9ca3af" }}>
+                (optional)
+              </Text>
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: "#fff",
+                borderWidth: 1,
+                borderColor: "#d1d5db",
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 16,
+              }}
+              placeholder="e.g. Library 2nd floor"
+              value={lostLocation}
+              onChangeText={setLostLocation}
+            />
+
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: "600",
+                marginBottom: 6,
+                color: "#374151",
+              }}
+            >
+              When you lost it{" "}
+              <Text style={{ fontWeight: "400", color: "#9ca3af" }}>
+                (optional)
+              </Text>
+            </Text>
+            <TextInput
+              style={{
+                backgroundColor: "#fff",
+                borderWidth: 1,
+                borderColor: "#d1d5db",
+                borderRadius: 8,
+                padding: 12,
+                marginBottom: 24,
+              }}
+              placeholder="YYYY-MM-DD"
+              value={lostDate}
+              onChangeText={setLostDate}
+            />
+
+            <TouchableOpacity
+              style={{
+                backgroundColor:
+                  !proofDescription || !contactInfo || submittingClaim
+                    ? "#9ca3af"
+                    : "#4f46e5",
+                padding: 16,
+                borderRadius: 8,
+                alignItems: "center",
+                marginBottom: 32,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
+              }}
+              onPress={submitClaim}
+              disabled={!proofDescription || !contactInfo || submittingClaim}
+            >
+              <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>
+                {submittingClaim ? "Submitting..." : "Submit Claim"}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+      
     </SafeAreaView>
   );
 }
