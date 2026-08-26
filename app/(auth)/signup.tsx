@@ -2,17 +2,24 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-    Alert, GestureResponderEvent, StyleSheet, Text,
-    TextInput, TouchableOpacity, View
+    Alert,
+    GestureResponderEvent,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_URL } from "../../constants/api";
+import { useAlert } from "../../context/AlertContext";
 export default function SignUp() {
   const [secure, setSecure] = useState(true);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter();
+    const router = useRouter();
+  const { showAlert } = useAlert();
 
   function handleSignup(event: GestureResponderEvent): void {
     throw new Error("Function not implemented.");
@@ -94,20 +101,26 @@ export default function SignUp() {
               const data = await response.json();
 
               if (response.ok) {
-                Alert.alert("Success", "Account created successfully 🎉");
-                console.log(data);
+                showAlert({
+                  type: 'success',
+                  title: 'Account Created Successfully',
+                  message: 'You can now log in to FoundIT.',
+                  buttonText: 'Continue',
+                  onPress: () => router.replace('/(auth)/login')
+                });
               } else {
-                Alert.alert("Error", data.message);
+                showAlert({ title: "Error", message: data.message, type: 'error' })
               }
             } catch (error) {
               console.log(error);
-              Alert.alert("Error", "Cannot connect to server");
+              showAlert({ title: "Error", message: "Cannot connect to server", type: 'error' })
             }
           }}
         >
           <Text style={styles.buttonText}>Create Account</Text>
         </TouchableOpacity>
       </View>
+      
     </SafeAreaView>
   );
 }
