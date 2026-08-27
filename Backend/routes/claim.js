@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Claim = require("../models/Claim");
 const Item = require("../models/Item");
+const Notification = require("../models/Notification");
 const { protect, adminOnly } = require("../middleware/authMiddleware");
 
 /*
@@ -47,10 +48,50 @@ router.post("/", protect, async (req, res) => {
 */
 router.get("/", protect, adminOnly, async (req, res) => {
   try {
-    const claims = await Claim.find()
+    const { status, q, sortBy, sortDir } = req.query;
+
+    const filter = {};
+    if (status) filter.status = status;
+
+    if (q) {
+      filter.$or = [
+        { proof_description: { $regex: q, $options: "i" } },
+        { contact_info: { $regex: q, $options: "i" } },
+      ];
+    }
+
+    let sortObj = { createdAt: -1 };
+    if (sortBy) {
+      sortObj = {};
+      sortObj[sortBy] = sortDir === "asc" ? 1 : -1;
+    }
+
+    // Because we want to search claimant name or item title, it's easier to fetch and then filter if q is present
+    // but a basic search on the claim document is fine. Let's rely on standard populate first.
+    let claims = await Claim.find(filter)
       .populate("item")
       .populate("claimant")
-      .sort({ createdAt: -1 });
+      .sort(sortObj);
+
+    if (q) {
+      const lowerQ = q.toLowerCase();
+      // Also filter by populated fields manually if not matched by db query
+      claims = claims.filter(
+        (c) =>
+          (c.proof_description &&
+            c.proof_description.toLowerCase().includes(lowerQ)) ||
+          (c.contact_info && c.contact_info.toLowerCase().includes(lowerQ)) ||
+          (c.item &&
+            c.item.title &&
+            c.item.title.toLowerCase().includes(lowerQ)) ||
+          (c.claimant &&
+            c.claimant.name &&
+            c.claimant.name.toLowerCase().includes(lowerQ)) ||
+          (c.claimant &&
+            c.claimant.email &&
+            c.claimant.email.toLowerCase().includes(lowerQ)),
+      );
+    }
 
     res.json(claims);
   } catch (error) {
@@ -65,7 +106,7 @@ router.get("/", protect, adminOnly, async (req, res) => {
 */
 router.patch("/:id/approve", protect, adminOnly, async (req, res) => {
   try {
-    const claim = await Claim.findById(req.params.id);
+    const claim = await Claim.findById(req.params.id).populate("item");
     if (!claim) {
       return res.status(404).json({ message: "Claim not found" });
     }
@@ -74,8 +115,18 @@ router.patch("/:id/approve", protect, adminOnly, async (req, res) => {
     await claim.save();
 
     // Update item status
-    await Item.findByIdAndUpdate(claim.item, {
+    await Item.findByIdAndUpdate(claim.item._id || claim.item, {
       status: "claimed",
+    });
+
+    // Create Notification for the claimant
+    const itemTitle = claim.item?.title || "an item";
+    await Notification.create({
+      user: claim.claimant,
+      title: "Claim Approved! 🎉",
+      message: `Your claim for "${itemTitle}" was approved.`,
+      type: "claim_approved",
+      relatedId: claim._id,
     });
 
     res.json({ message: "Claim approved" });
@@ -91,7 +142,7 @@ router.patch("/:id/approve", protect, adminOnly, async (req, res) => {
 */
 router.patch("/:id/reject", protect, adminOnly, async (req, res) => {
   try {
-    const claim = await Claim.findById(req.params.id);
+    const claim = await Claim.findById(req.params.id).populate("item");
     if (!claim) {
       return res.status(404).json({ message: "Claim not found" });
     }
@@ -100,8 +151,18 @@ router.patch("/:id/reject", protect, adminOnly, async (req, res) => {
     await claim.save();
 
     // Re-open item so another user can claim it
-    await Item.findByIdAndUpdate(claim.item, {
+    await Item.findByIdAndUpdate(claim.item._id || claim.item, {
       status: "open",
+    });
+
+    // Create Notification for the claimant
+    const itemTitle = claim.item?.title || "an item";
+    await Notification.create({
+      user: claim.claimant,
+      title: "Claim Rejected",
+      message: `Your claim for "${itemTitle}" was rejected.`,
+      type: "claim_rejected",
+      relatedId: claim._id,
     });
 
     res.json({ message: "Claim rejected" });

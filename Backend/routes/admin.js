@@ -31,10 +31,94 @@ router.get("/stats", protect, adminOnly, async (req, res) => {
   }
 });
 
+// GET /api/admin/reports
+router.get("/reports", protect, adminOnly, async (req, res) => {
+  try {
+    // 1. Items Reported Over Time (last 30 days or general grouping by month/day)
+    // We'll group by YYYY-MM-DD
+    const itemsOverTime = await Item.aggregate([
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          lost: { $sum: { $cond: [{ $eq: ["$type", "lost"] }, 1, 0] } },
+          found: { $sum: { $cond: [{ $eq: ["$type", "found"] }, 1, 0] } }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+    
+    // Map to expected frontend format (e.g., name, lost, found)
+    const itemsReportedData = itemsOverTime.map(item => ({
+      name: item._id,
+      lost: item.lost,
+      found: item.found
+    }));
+
+    // 2. Top Lost Categories
+    const topCategories = await Item.aggregate([
+      { $match: { type: "lost" } },
+      { $group: { _id: "$category", value: { $sum: 1 } } },
+      { $sort: { value: -1 } },
+      { $limit: 5 } // top 5
+    ]);
+    
+    const topCategoriesData = topCategories.map(cat => ({
+      name: cat._id || "Uncategorized",
+      value: cat.value
+    }));
+
+    // 3. Claim Resolution Rate
+    const claims = await Claim.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]);
+    
+    let approved = 0, rejected = 0, pending = 0;
+    claims.forEach(c => {
+      if (c._id === 'approved') approved = c.count;
+      else if (c._id === 'rejected') rejected = c.count;
+      else if (c._id === 'pending') pending = c.count;
+    });
+
+    const claimResolutionData = [
+      { name: "Approved", value: approved },
+      { name: "Rejected", value: rejected },
+      { name: "Pending", value: pending }
+    ];
+
+    res.json({
+      itemsReportedData,
+      topCategoriesData,
+      claimResolutionData
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // GET /api/admin/users
 router.get("/users", protect, adminOnly, async (req, res) => {
   try {
-    const users = await User.find().lean();
+    const { status, role, q, sortBy, sortDir } = req.query;
+    
+    const filter = {};
+    if (status) filter.status = status;
+    if (role) filter.role = role;
+    
+    if (q) {
+      filter.$or = [
+        { name: { $regex: q, $options: "i" } },
+        { email: { $regex: q, $options: "i" } },
+        { studentId: { $regex: q, $options: "i" } }
+      ];
+    }
+    
+    let sortObj = { createdAt: -1 };
+    if (sortBy) {
+      sortObj = {};
+      sortObj[sortBy] = sortDir === "asc" ? 1 : -1;
+    }
+
+    const users = await User.find(filter).sort(sortObj).lean();
     
     // Fetch stats for users manually (items reported, claims made)
     const itemsCounts = await Item.aggregate([
@@ -50,11 +134,18 @@ router.get("/users", protect, adminOnly, async (req, res) => {
     const claimsMap = {};
     claimsCounts.forEach(c => claimsMap[c._id] = c.count);
 
-    const enrichedUsers = users.map(u => ({
+    let enrichedUsers = users.map(u => ({
       ...u,
       itemsReported: itemsMap[u._id] || 0,
       claimsMade: claimsMap[u._id] || 0
     }));
+    
+    // allow sorting by itemsReported or claimsMade
+    if (sortBy === 'itemsReported') {
+      enrichedUsers.sort((a, b) => sortDir === 'asc' ? a.itemsReported - b.itemsReported : b.itemsReported - a.itemsReported);
+    } else if (sortBy === 'claimsMade') {
+      enrichedUsers.sort((a, b) => sortDir === 'asc' ? a.claimsMade - b.claimsMade : b.claimsMade - a.claimsMade);
+    }
 
     res.json(enrichedUsers);
   } catch (error) {

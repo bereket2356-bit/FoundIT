@@ -17,15 +17,40 @@ router.post("/", protect, async (req, res) => {
 // GET all items (public or protected? Usually public can see lost/found. For admin dashboard, we need all)
 router.get("/", async (req, res) => {
   try {
-    const { type, status } = req.query;
+    const { type, status, category, location, dateFrom, dateTo, q, sortBy, sortDir } = req.query;
     const filter = {};
     if (type) filter.type = type;
     if (status) filter.status = status;
+    if (category) filter.category = category;
+    if (location) filter.location = { $regex: location, $options: "i" };
+    if (dateFrom || dateTo) {
+      filter.createdAt = {};
+      if (dateFrom) filter.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) filter.createdAt.$lte = new Date(dateTo);
+    }
+    
+    // Search query
+    if (q) {
+      filter.$or = [
+        { title: { $regex: q, $options: "i" } },
+        { category: { $regex: q, $options: "i" } },
+        { location: { $regex: q, $options: "i" } }
+      ];
+      // Note: searching by ID requires it to be a valid ObjectId, which might throw an error if q is not a valid ObjectId.
+      // So we'll stick to string fields.
+    }
+
+    // Sort setup
+    let sortObj = { createdAt: -1 };
+    if (sortBy) {
+      sortObj = {};
+      sortObj[sortBy] = sortDir === "asc" ? 1 : -1;
+    }
 
     const items = await Item.find(filter)
       .populate("user")
       .populate("claimant")
-      .sort({ createdAt: -1 });
+      .sort(sortObj);
     res.json(items);
   } catch (error) {
     res.status(500).json({ message: error.message });
