@@ -2,12 +2,14 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const getBaseUrl = () => {
-  const debuggerHost = Constants.expoConfig?.hostUri;
-  const localhost = debuggerHost?.split(":")[0] || "localhost";
+  const hostUri =
+    Constants.expoConfig?.hostUri || (Constants as any).experienceUrl;
 
-  // If we are in Expo Go, hostUri will give us the local IP of the computer
-  if (debuggerHost) {
-    return `http://${localhost}:5000`;
+  if (hostUri) {
+    const host = hostUri.split(":")[0].replace(/^https?:\/\//, "");
+    if (host && host !== "localhost" && host !== "127.0.0.1") {
+      return `http://${host}:5000`;
+    }
   }
 
   // Fallback for Android emulator
