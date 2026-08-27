@@ -16,8 +16,12 @@ const ItemSchema = new mongoose.Schema({
   },
   category: String,
   location: String,
-  date: Date,
+  date: String,
   description: String,
+  contactInfo: {
+    type: String,
+    default: "",
+  },
   image: String,
   status: {
     type: String,
