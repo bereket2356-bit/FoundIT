@@ -1,6 +1,15 @@
-import React, { createContext, useContext, useState } from "react";
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import React, { createContext, useContext, useState } from "react";
+import {
+    Modal,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type AlertType = "success" | "error" | "warning" | "info";
 
@@ -51,100 +60,112 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
 
   const getIcon = () => {
     switch (options.type) {
-      case "success": return "checkmark-circle";
-      case "error": return "close-circle";
-      case "warning": return "warning";
+      case "success":
+        return "checkmark-circle-outline";
+      case "error":
+        return "close-circle-outline";
+      case "warning":
+        return "warning-outline";
       case "info":
-      default: return "information-circle";
-    }
-  };
-
-  const getColor = () => {
-    switch (options.type) {
-      case "success": return "#10b981";
-      case "error": return "#ef4444";
-      case "warning": return "#f59e0b";
-      case "info":
-      default: return "#3b82f6";
+      default:
+        return "information-circle-outline";
     }
   };
 
   return (
     <AlertContext.Provider value={{ showAlert }}>
       {children}
-      <Modal visible={visible} animationType="fade" transparent>
-        <View style={styles.overlay}>
-          <View style={styles.container}>
-            <View style={[styles.iconBadge, { backgroundColor: getColor() }]}>
-              <Ionicons name={getIcon() as any} size={40} color="#fff" />
+      <Modal
+        visible={visible}
+        animationType="fade"
+        statusBarTranslucent
+        transparent={true}
+      >
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="transparent"
+          translucent
+        />
+        <BlurView
+          intensity={90}
+          tint="dark"
+          style={StyleSheet.absoluteFillObject}
+        >
+          <SafeAreaView style={styles.fullScreenContainer}>
+            <View style={styles.centerGroup}>
+              <View style={styles.iconCircle}>
+                <Ionicons name={getIcon() as any} size={64} color="#ffffff" />
+              </View>
+              <Text style={styles.title}>{options.title}</Text>
+              <Text style={styles.description}>{options.message}</Text>
+
+              <TouchableOpacity
+                style={styles.button}
+                onPress={handlePress}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.buttonText}>
+                  {options.buttonText || "Continue"}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.title}>{options.title}</Text>
-            <Text style={styles.description}>{options.message}</Text>
-            
-            <TouchableOpacity 
-              style={[styles.button, { backgroundColor: '#4F46E5' }]} 
-              onPress={handlePress}
-            >
-              <Text style={styles.buttonText}>{options.buttonText}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+          </SafeAreaView>
+        </BlurView>
       </Modal>
     </AlertContext.Provider>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  fullScreenContainer: {
     flex: 1,
-    backgroundColor: 'rgba(11, 12, 42, 0.85)', // Matches FoundIT dark theme
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.65)", // Semi-transparent dark blur overlay
+    paddingHorizontal: 24,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  container: {
-    width: '85%',
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+  centerGroup: {
+    width: "100%",
+    maxWidth: 340,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
   },
-  iconBadge: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 10,
+  iconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "#1a1a1a",
+    borderWidth: 1.5,
+    borderColor: "#333333",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1f2937',
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#ffffff",
     marginBottom: 10,
-    textAlign: 'center',
+    textAlign: "center",
   },
   description: {
     fontSize: 15,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginBottom: 24,
+    color: "#aaaaaa",
+    textAlign: "center",
     lineHeight: 22,
+    marginBottom: 32,
   },
   button: {
-    width: '100%',
-    padding: 16,
+    width: "100%",
+    paddingVertical: 16,
     borderRadius: 14,
-    alignItems: 'center',
+    alignItems: "center",
+    backgroundColor: "#ffffff", // Clean contrast white button
   },
   buttonText: {
-    color: '#fff',
+    color: "#000000",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });
