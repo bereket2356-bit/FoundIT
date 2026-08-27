@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface User {
   name: string;
@@ -22,8 +23,28 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     id: "",
   });
 
+  useEffect(() => {
+    const loadStoredUser = async () => {
+      try {
+        const stored = await AsyncStorage.getItem("user");
+        if (stored) {
+          setUser(JSON.parse(stored));
+        }
+      } catch (err) {
+        console.log("Failed to load user from storage", err);
+      }
+    };
+    loadStoredUser();
+  }, []);
+
   const updateUser = (data: Partial<User>) => {
-    setUser((prev) => ({ ...prev, ...data }));
+    setUser((prev) => {
+      const updated = { ...prev, ...data };
+      AsyncStorage.setItem("user", JSON.stringify(updated)).catch((err) =>
+        console.log("Failed to save user to storage", err),
+      );
+      return updated;
+    });
   };
 
   return (
