@@ -1,16 +1,15 @@
 import {
-  AlertCircle,
-  ArrowUpDown,
-  Ban,
-  Search,
-  Shield,
-  SlidersHorizontal,
-  UserPlus,
-  Users as UsersIcon,
-  X,
+    AlertCircle,
+    ArrowUpDown,
+    Ban,
+    Search,
+    Shield,
+    SlidersHorizontal,
+    UserPlus,
+    Users as UsersIcon,
+    X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import API from "../api";
+import API, { BASE_URL } from "../api";
 
 const debounce = (func, wait) => {
   let timeout;
@@ -334,7 +333,7 @@ const Users = () => {
                                     ? rawAvatar.startsWith("http") ||
                                       rawAvatar.startsWith("data:")
                                       ? rawAvatar
-                                      : `http://localhost:5000${rawAvatar}`
+                                      : `${BASE_URL}${rawAvatar}`
                                     : initialFallback
                                 }
                                 onError={(e) => {
