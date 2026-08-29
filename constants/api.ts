@@ -1,25 +1,33 @@
 import Constants from "expo-constants";
-import { Platform } from "react-native";
 
-const getBaseUrl = () => {
-  const hostUri =
-    Constants.expoConfig?.hostUri || (Constants as any).experienceUrl;
+const PROD_BASE_URL = "https://foundit-n1ou.onrender.com";
 
-  if (hostUri) {
-    const host = hostUri.split(":")[0].replace(/^https?:\/\//, "");
-    if (host && host !== "localhost" && host !== "127.0.0.1") {
-      return `http://${host}:5000`;
-    }
+const getBaseUrl = (): string => {
+  // 1. Check EXPO_PUBLIC_BASE_URL or EXPO_PUBLIC_API_URL from environment / EAS Build / .env
+  if (process.env.EXPO_PUBLIC_BASE_URL) {
+    return process.env.EXPO_PUBLIC_BASE_URL.replace(/\/+$/, "");
+  }
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL.replace(/\/api\/?$/, "").replace(
+      /\/+$/,
+      "",
+    );
   }
 
-  // Fallback for Android emulator
-  if (Platform.OS === "android") {
-    return "http://10.0.2.2:5000";
+  // 2. Check Expo Constants extra (configured in app.json for EAS Build)
+  const extraBaseUrl = Constants.expoConfig?.extra?.baseUrl;
+  if (extraBaseUrl) {
+    return (extraBaseUrl as string).replace(/\/+$/, "");
+  }
+  const extraApiUrl = Constants.expoConfig?.extra?.apiUrl;
+  if (extraApiUrl) {
+    return (extraApiUrl as string).replace(/\/api\/?$/, "").replace(/\/+$/, "");
   }
 
-  // Fallback for iOS simulator and Web
-  return "http://localhost:5000";
+  // 3. Fallback to production deployed URL
+  return PROD_BASE_URL;
 };
 
 export const BASE_URL = getBaseUrl();
-export const API_URL = `${BASE_URL}/api`;
+export const API_URL =
+  process.env.EXPO_PUBLIC_API_URL?.replace(/\/+$/, "") || `${BASE_URL}/api`;
