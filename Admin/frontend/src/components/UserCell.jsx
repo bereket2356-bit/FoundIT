@@ -1,3 +1,4 @@
+import { BASE_URL } from "../api";
 
 const UserCell = ({ user, contactInfo }) => {
   const name = user?.name || "Unknown User";
@@ -17,7 +18,7 @@ const UserCell = ({ user, contactInfo }) => {
             hasRealAvatar
               ? avatar.startsWith("http") || avatar.startsWith("data:")
                 ? avatar
-                : `http://localhost:5000${avatar}`
+                : `${BASE_URL}${avatar}`
               : initialFallback
           }
           onError={(e) => {
