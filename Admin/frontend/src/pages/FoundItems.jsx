@@ -6,8 +6,7 @@ import {
     SlidersHorizontal,
     X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import API from "../api";
+import API, { BASE_URL } from "../api";
 import UserCell from "../components/UserCell";
 
 const debounce = (func, wait) => {
@@ -309,7 +308,7 @@ const FoundItems = () => {
                                 item.image.startsWith("http") ||
                                 item.image.startsWith("data:")
                                   ? item.image
-                                  : `http://localhost:5000${item.image}`
+                                  : `${BASE_URL}${item.image}`
                               }
                               alt="Item"
                               className="w-full h-full object-cover"
