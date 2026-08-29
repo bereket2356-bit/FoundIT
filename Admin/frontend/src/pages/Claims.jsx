@@ -5,6 +5,7 @@ import {
     ExternalLink,
     FileText,
     ImageOff,
+    Info,
     MessageSquare,
     Search,
 } from "lucide-react";
