@@ -7,8 +7,7 @@ import {
     XCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-import API from "../api";
+import API, { BASE_URL } from "../api";
 import UserCell from "../components/UserCell";
 
 const StatCard = ({ title, value, icon: Icon, color, isNegative }) => (
@@ -176,7 +175,7 @@ const Overview = () => {
                                   img.startsWith("http") ||
                                   img.startsWith("data:")
                                     ? img
-                                    : `http://localhost:5000${img}`
+                                    : `${BASE_URL}${img}`
                                 }
                                 alt="Item"
                                 className="w-full h-full object-cover"
