@@ -13,7 +13,7 @@ const seedAdmin = async () => {
 
     const email = "admin@foundit.com";
     const existing = await User.findOne({ email });
-    
+
     if (existing) {
       console.log("Admin already exists!");
       process.exit();

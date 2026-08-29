@@ -215,7 +215,11 @@ router.post("/login", async (req, res) => {
     }
 
     // Check verification status for local accounts (exempt admins)
-    if (user.authProvider === "local" && !user.isVerified && user.role !== "admin") {
+    if (
+      user.authProvider === "local" &&
+      !user.isVerified &&
+      user.role !== "admin"
+    ) {
       return res.status(401).json({
         code: "EMAIL_NOT_VERIFIED",
         message: "Please verify your email before logging in.",
