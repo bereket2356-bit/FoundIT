@@ -27,6 +27,7 @@ const seedAdmin = async () => {
       email: email,
       password: hashedPassword,
       role: "admin",
+      isVerified: true,
     });
 
     console.log("Admin created successfully! (admin@foundit.com / admin123)");
