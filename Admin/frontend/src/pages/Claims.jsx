@@ -9,8 +9,7 @@ import {
     MessageSquare,
     Search,
 } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
-import API from "../api";
+import API, { BASE_URL } from "../api";
 import UserCell from "../components/UserCell";
 
 const debounce = (func, wait) => {
@@ -216,7 +215,7 @@ const Claims = () => {
                                         img.startsWith("http") ||
                                         img.startsWith("data:")
                                           ? img
-                                          : `http://localhost:5000${img}`
+                                          : `${BASE_URL}${img}`
                                       }
                                       alt="Item"
                                       className="w-full h-full object-cover"
@@ -384,7 +383,7 @@ const Claims = () => {
                                             ? img.startsWith("http") ||
                                               img.startsWith("data:")
                                               ? img
-                                              : `http://localhost:5000${img}`
+                                              : `${BASE_URL}${img}`
                                             : null;
 
                                           return proofSrc ? (
@@ -468,7 +467,7 @@ const Claims = () => {
                                             ? img.startsWith("http") ||
                                               img.startsWith("data:")
                                               ? img
-                                              : `http://localhost:5000${img}`
+                                              : `${BASE_URL}${img}`
                                             : null;
 
                                           return itemSrc ? (
