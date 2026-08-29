@@ -9,7 +9,7 @@ import {
     MessageSquare,
     Search,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import API, { BASE_URL } from "../api";
 import UserCell from "../components/UserCell";
 
@@ -191,7 +191,7 @@ const Claims = () => {
                       </tr>
                     ) : (
                       claims.map((claim) => (
-                        <React.Fragment key={claim._id}>
+                        <Fragment key={claim._id}>
                           <tr
                             className="hover:bg-slate-50/50 transition-colors cursor-pointer"
                             onClick={() =>
@@ -507,7 +507,7 @@ const Claims = () => {
                               </td>
                             </tr>
                           )}
-                        </React.Fragment>
+                        </Fragment>
                       ))
                     )}
                   </tbody>
