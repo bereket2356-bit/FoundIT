@@ -5,10 +5,10 @@ import {
     ExternalLink,
     FileText,
     ImageOff,
-    Info,
     MessageSquare,
     Search,
 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import API, { BASE_URL } from "../api";
 import UserCell from "../components/UserCell";
 
