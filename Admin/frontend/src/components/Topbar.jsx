@@ -1,4 +1,4 @@
-import { Bell, FileText, Inbox, Search } from "lucide-react";
+import { Bell, FileText, Inbox } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../api";
@@ -54,21 +54,6 @@ const Topbar = () => {
           <span className="bg-slate-100 text-slate-600 text-xs font-medium px-2.5 py-1 rounded-md">
             Admin Dashboard
           </span>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="flex-1 max-w-xl mx-8">
-        <div className="relative">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-            size={18}
-          />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow"
-          />
         </div>
       </div>
 
