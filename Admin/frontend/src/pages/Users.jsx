@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import API, { BASE_URL } from "../api";
+import AddUserModal from "../components/AddUserModal";
 
 const debounce = (func, wait) => {
   let timeout;
@@ -24,6 +25,7 @@ const Users = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
 
   // Search, Filter, Sort state
   const [search, setSearch] = useState("");
@@ -86,6 +88,16 @@ const Users = () => {
     }
   };
 
+  const handleToggleVerify = async (id, currentVerified) => {
+    try {
+      const newVerified = !currentVerified;
+      await API.patch(`/admin/users/${id}/verify`, { isVerified: newVerified });
+      fetchUsers();
+    } catch (err) {
+      alert(err.response?.data?.message || err.message);
+    }
+  };
+
   const totalUsers = users.length;
   const activeStaff = users.filter(
     (u) => u.role === "Admin" && (u.status === "Active" || !u.status),
@@ -101,7 +113,10 @@ const Users = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => setIsAddUserModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 flex-shrink-0 cursor-pointer shadow-sm"
+          >
             <UserPlus size={16} />
             Add User
           </button>
@@ -351,8 +366,33 @@ const Users = () => {
                           <div className="text-sm font-medium text-slate-800">
                             {user.name}
                           </div>
-                          <div className="text-xs text-slate-500">
-                            {user.email}
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-slate-500">
+                              {user.email}
+                            </span>
+                            {(() => {
+                              const isVerified =
+                                user.isVerified === true ||
+                                user.role?.toLowerCase() === "admin" ||
+                                user.authProvider === "google";
+
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleToggleVerify(user._id, isVerified)
+                                  }
+                                  title="Click to toggle email verification status"
+                                  className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                                    isVerified
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                      : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                                  }`}
+                                >
+                                  {isVerified ? "✓ Verified" : "⚠ Unverified"}
+                                </button>
+                              );
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -412,6 +452,12 @@ const Users = () => {
           </div>
         )}
       </div>
+
+      <AddUserModal
+        isOpen={isAddUserModalOpen}
+        onClose={() => setIsAddUserModalOpen(false)}
+        onUserCreated={() => fetchUsers()}
+      />
     </div>
   );
 };
