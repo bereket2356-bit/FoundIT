@@ -22,12 +22,9 @@ import { useUser } from "../../context/Usercontext";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_WEB_CLIENT_ID =
+const GOOGLE_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
   "777294337139-uc75crta4s4k6tvlrlt6uvf0lfrl0908.apps.googleusercontent.com";
-
-const GOOGLE_ANDROID_CLIENT_ID =
-  process.env.EXPO_PUBLIC_ANDROID_GOOGLE_CLIENT_ID || GOOGLE_WEB_CLIENT_ID;
 
 export default function Login() {
   const [secure, setSecure] = useState(true);
@@ -38,10 +35,13 @@ export default function Login() {
   const { showAlert } = useAlert();
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_WEB_CLIENT_ID,
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: GOOGLE_WEB_CLIENT_ID,
+    clientId: GOOGLE_CLIENT_ID,
+    iosClientId: GOOGLE_CLIENT_ID,
+    androidClientId: GOOGLE_CLIENT_ID,
+    webClientId: GOOGLE_CLIENT_ID,
+    redirectUri: makeRedirectUri({
+      scheme: "foundit",
+    }),
   });
 
   useEffect(() => {
