@@ -54,12 +54,10 @@ router.post("/signup", async (req, res) => {
       lastVerificationResend: new Date(),
     });
 
-    // Send verification email
-    try {
-      await sendVerificationEmail(user.email, user.name, verificationCode);
-    } catch (e) {
-      console.log("Error sending verification email:", e.message);
-    }
+    // Send verification email in the background for instant response
+    sendVerificationEmail(user.email, user.name, verificationCode).catch((e) =>
+      console.log("Background email send error:", e.message),
+    );
 
     res.status(201).json({
       message:
