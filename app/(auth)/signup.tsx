@@ -5,14 +5,14 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_URL } from "../../constants/api";
@@ -22,6 +22,7 @@ import { useUser } from "../../context/Usercontext";
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
   "1075224924633-pj0jekr7eq81hqie2so2lt97dhina7lr.apps.googleusercontent.com";
 
 export default function SignUp() {
