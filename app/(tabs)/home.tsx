@@ -1,28 +1,31 @@
-// app/index.tsx
-import { Ionicons } from "@expo/vector-icons";
+// app/(tabs)/home.tsx
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import React, { Key, useCallback, useEffect, useState } from "react";
 import {
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { API_URL } from "../../constants/api";
 import { useAlert } from "../../context/AlertContext";
+import { useAppTheme } from "../../context/ThemeContext";
 import { useUser } from "../../context/Usercontext";
+
 type Item = {
   user: any;
   status: any;
@@ -33,29 +36,66 @@ type Item = {
   category: string;
   type: "found" | "lost";
   location: string;
+  date?: string;
+  description?: string;
+  contactInfo?: string;
   createdAt: string;
 };
+
+const CATEGORIES = [
+  { id: "bottle", label: "Bottle", categoryKey: "Bottle", iconFamily: "MCI", iconName: "bottle-tonic-outline" },
+  { id: "umbrella", label: "Umbrella", categoryKey: "Umbrella", iconFamily: "Ionicons", iconName: "umbrella-outline" },
+  { id: "headphones", label: "Headphones", categoryKey: "Headphones", iconFamily: "Ionicons", iconName: "headset-outline" },
+  { id: "glasses", label: "Glasses", categoryKey: "Glasses", iconFamily: "Ionicons", iconName: "glasses-outline" },
+  { id: "id_badge", label: "ID Card", categoryKey: "ID Card", iconFamily: "Ionicons", iconName: "card-outline" },
+  { id: "keys", label: "Keys", categoryKey: "Keys", iconFamily: "Ionicons", iconName: "key-outline" },
+  { id: "phone", label: "Phone", categoryKey: "Phone", iconFamily: "Ionicons", iconName: "phone-portrait-outline" },
+  { id: "bag", label: "Bag", categoryKey: "Bag", iconFamily: "Ionicons", iconName: "bag-handle-outline" },
+];
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+const DAYS_OF_WEEK = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 export default function HomeScreen() {
   const [items, setItems] = useState<Item[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedType, setSelectedType] = useState<"all" | "found" | "lost">(
-    "all",
-  );
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<"all" | "found" | "lost">("all");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [refreshing, setRefreshing] = useState(false);
 
+  // Theme
+  const { isDarkMode, theme } = useAppTheme();
+
+  // Item Details View Modal
+  const [selectedItemDetail, setSelectedItemDetail] = useState<Item | null>(null);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+
+  // Claim Modal State
   const [claimModalVisible, setClaimModalVisible] = useState(false);
-  const [selectedItemForClaim, setSelectedItemForClaim] = useState<Item | null>(
-    null,
-  );
+  const [selectedItemForClaim, setSelectedItemForClaim] = useState<Item | null>(null);
   const [proofDescription, setProofDescription] = useState("");
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [lostLocation, setLostLocation] = useState("");
   const [lostDate, setLostDate] = useState("");
   const [contactInfo, setContactInfo] = useState("");
   const [submittingClaim, setSubmittingClaim] = useState(false);
+
+  // Claim Calendar Modal State
+  const [claimCalVisible, setClaimCalVisible] = useState(false);
+  const today = new Date();
+  const [claimCalYear, setClaimCalYear] = useState(today.getFullYear());
+  const [claimCalMonth, setClaimCalMonth] = useState(today.getMonth());
+  const [claimCalSelectedDate, setClaimCalSelectedDate] = useState("");
+
+  // Notifications
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifModalVisible, setNotifModalVisible] = useState(false);
+
   const { user } = useUser();
   const { showAlert } = useAlert();
 
@@ -72,21 +112,21 @@ export default function HomeScreen() {
     }
   };
 
+  const fetchItems = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/items`);
+      setItems(res.data || []);
+    } catch (error) {
+      console.log("Fetch items error", error);
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchItems();
       fetchNotifications();
-    }, []),
+    }, [])
   );
-
-  const fetchItems = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/items`);
-      setItems(res.data);
-    } catch (error) {
-      console.log(error);
-    }
-  };
 
   useEffect(() => {
     fetchItems();
@@ -105,10 +145,10 @@ export default function HomeScreen() {
       await axios.patch(
         `${API_URL}/notifications/${id}/read`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
       setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? { ...n, read: true } : n)),
+        prev.map((n) => (n._id === id ? { ...n, read: true } : n))
       );
     } catch (err) {
       console.log("Mark notification read error", err);
@@ -117,23 +157,52 @@ export default function HomeScreen() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const filteredItems = items.filter((item) => {
-    const matchesType = selectedType === "all" || item.type === selectedType;
+  const handleCategorySelect = (catKey: string, catId: string) => {
+    if (selectedCategory === catId) {
+      setSelectedCategory(null);
+    } else {
+      setSelectedCategory(catId);
+    }
+  };
 
-    const matchesSearch =
-      item.title.toLowerCase().includes(search.toLowerCase()) ||
-      item.category.toLowerCase().includes(search.toLowerCase()) ||
-      item.location.toLowerCase().includes(search.toLowerCase());
+  const filteredItems = items
+    .filter((item) => {
+      const matchesType = selectedType === "all" || item.type === selectedType;
 
-    return matchesType && matchesSearch;
-  });
+      const matchesSearch =
+        !search.trim() ||
+        item.title?.toLowerCase().includes(search.toLowerCase()) ||
+        item.category?.toLowerCase().includes(search.toLowerCase()) ||
+        item.location?.toLowerCase().includes(search.toLowerCase()) ||
+        item.description?.toLowerCase().includes(search.toLowerCase());
+
+      const matchesCategory =
+        !selectedCategory ||
+        (() => {
+          const selectedObj = CATEGORIES.find((c) => c.id === selectedCategory);
+          if (!selectedObj) return true;
+          const keyMatches = item.category?.toLowerCase() === selectedObj.categoryKey.toLowerCase();
+          const labelMatches =
+            item.title?.toLowerCase().includes(selectedObj.label.toLowerCase()) ||
+            item.category?.toLowerCase().includes(selectedObj.label.toLowerCase()) ||
+            item.description?.toLowerCase().includes(selectedObj.label.toLowerCase());
+          return keyMatches || labelMatches;
+        })();
+
+      return matchesType && matchesSearch && matchesCategory;
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.createdAt).getTime();
+      const timeB = new Date(b.createdAt).getTime();
+      return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
+    });
 
   const pickProofImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       showAlert({
         title: "Permission required",
-        message: "Sorry, we need camera roll permissions to make this work!",
+        message: "Camera roll permissions are required to upload proof images.",
         type: "error",
       });
       return;
@@ -154,8 +223,65 @@ export default function HomeScreen() {
     }
   };
 
+  // Claim Calendar Functions
+  const openClaimCalendar = () => {
+    if (lostDate) {
+      const parts = lostDate.split("-");
+      if (parts.length === 3) {
+        setClaimCalYear(parseInt(parts[0], 10));
+        setClaimCalMonth(parseInt(parts[1], 10) - 1);
+        setClaimCalSelectedDate(lostDate);
+      }
+    } else {
+      const now = new Date();
+      setClaimCalYear(now.getFullYear());
+      setClaimCalMonth(now.getMonth());
+      setClaimCalSelectedDate("");
+    }
+    setClaimCalVisible(true);
+  };
+
+  const prevClaimMonth = () => {
+    if (claimCalMonth === 0) {
+      setClaimCalMonth(11);
+      setClaimCalYear(claimCalYear - 1);
+    } else {
+      setClaimCalMonth(claimCalMonth - 1);
+    }
+  };
+
+  const nextClaimMonth = () => {
+    if (claimCalMonth === 11) {
+      setClaimCalMonth(0);
+      setClaimCalYear(claimCalYear + 1);
+    } else {
+      setClaimCalMonth(claimCalMonth + 1);
+    }
+  };
+
+  const selectClaimDay = (day: number) => {
+    const formattedMonth = String(claimCalMonth + 1).padStart(2, "0");
+    const formattedDay = String(day).padStart(2, "0");
+    setClaimCalSelectedDate(`${claimCalYear}-${formattedMonth}-${formattedDay}`);
+  };
+
+  const confirmClaimDate = () => {
+    if (claimCalSelectedDate) {
+      setLostDate(claimCalSelectedDate);
+    }
+    setClaimCalVisible(false);
+  };
+
+  const daysInClaimMonth = new Date(claimCalYear, claimCalMonth + 1, 0).getDate();
+  const firstDayOfClaimWeek = new Date(claimCalYear, claimCalMonth, 1).getDay();
+
   const submitClaim = async () => {
-    if (!proofDescription || !contactInfo) {
+    if (!proofDescription.trim() || !contactInfo.trim()) {
+      showAlert({
+        title: "Missing Fields",
+        message: "Please describe identifying details and provide your contact info.",
+        type: "error",
+      });
       return;
     }
     if (!selectedItemForClaim) return;
@@ -166,30 +292,31 @@ export default function HomeScreen() {
       const res = await axios.post(
         `${API_URL}/items/${selectedItemForClaim._id}/claim`,
         {
-          proof_description: proofDescription,
+          proof_description: proofDescription.trim(),
           proof_image: proofImage || "",
-          lost_location: lostLocation || "",
+          lost_location: lostLocation.trim() || "",
           lost_date: lostDate || "",
-          contact_info: contactInfo,
+          contact_info: contactInfo.trim(),
         },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       // Update item in feed
       setItems((prev) =>
-        prev.map((it) => (it._id === selectedItemForClaim._id ? res.data : it)),
+        prev.map((it) => (it._id === selectedItemForClaim._id ? res.data : it))
       );
 
       showAlert({
         type: "success",
-        title: "Form Submitted",
-        message: "Wait for admin review.",
+        title: "Claim Submitted",
+        message: "Your claim has been received and is pending admin review.",
         buttonText: "Continue",
       });
 
       // Reset Modal
       setClaimModalVisible(false);
       setSelectedItemForClaim(null);
+      setDetailModalVisible(false);
       setProofDescription("");
       setProofImage(null);
       setLostLocation("");
@@ -204,36 +331,11 @@ export default function HomeScreen() {
           message: "This item already has a pending claim under review.",
           type: "error",
         });
-      } else if (code === "VALIDATION_ERROR") {
-        showAlert({
-          title: "Claim Error",
-          message: "Please fill out all required fields.",
-          type: "error",
-        });
-      } else if (code === "INVALID_STATE") {
-        showAlert({
-          title: "Claim Error",
-          message: "Item is not available for claim.",
-          type: "error",
-        });
-      } else if (err.response?.status === 401) {
-        showAlert({
-          title: "Claim Error",
-          message:
-            "Your session expired — please log in again to submit a claim.",
-          type: "error",
-        });
-      } else if (err.message && err.message.includes("Network")) {
-        showAlert({
-          title: "Claim Error",
-          message:
-            "Something went wrong on our end. Please try again in a moment.",
-          type: "error",
-        });
       } else {
         showAlert({
           title: "Claim Error",
           message:
+            err.response?.data?.message ||
             "Something went wrong on our end. Please try again in a moment.",
           type: "error",
         });
@@ -244,421 +346,662 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: "#f8f9fa" }}
-      edges={["top"]}
-    >
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={["top"]}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
 
-      {/* Header */}
+      {/* Top Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.appName}>FoundIT</Text>
-          <Text style={styles.subtitle}>Campus Lost & Found</Text>
+          <Text style={[styles.appName, { color: theme.textPrimary }]}>FoundIT</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Campus Lost & Found</Text>
         </View>
         <TouchableOpacity
-          style={styles.bellButton}
+          style={[styles.bellButton, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
           onPress={() => setNotifModalVisible(true)}
+          activeOpacity={0.8}
         >
-          <Ionicons name="notifications-outline" size={22} color="#000" />
+          <Ionicons name="notifications-outline" size={22} color={theme.textPrimary} />
           {unreadCount > 0 && (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: isDarkMode ? "#DC2626" : "#000000" }]}>
               <Text style={styles.badgeText}>{unreadCount}</Text>
             </View>
           )}
         </TouchableOpacity>
       </View>
 
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <Ionicons
-          name="search-outline"
-          size={20}
-          color="#888"
-          style={styles.searchIcon}
-        />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search items..."
-          placeholderTextColor="#aaa"
-          style={styles.searchInput}
-        />
-      </View>
-
-      {/* Found / Lost Toggle */}
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            selectedType === "all" && styles.toggleActive,
-          ]}
-          onPress={() => setSelectedType("all")}
-        >
-          <Text
-            style={
-              selectedType === "all"
-                ? styles.toggleTextActive
-                : styles.toggleText
-            }
-          >
-            All
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            selectedType === "found" && styles.toggleActive,
-          ]}
-          onPress={() => setSelectedType("found")}
-        >
-          <Text
-            style={
-              selectedType === "found"
-                ? styles.toggleTextActive
-                : styles.toggleText
-            }
-          >
-            Found
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.toggleButton,
-            selectedType === "lost" && styles.toggleActive,
-          ]}
-          onPress={() => setSelectedType("lost")}
-        >
-          <Text
-            style={
-              selectedType === "lost"
-                ? styles.toggleTextActive
-                : styles.toggleText
-            }
-          >
-            Lost
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Item List */}
       <ScrollView
-        style={styles.feed}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
+        style={styles.scrollFeed}
+        contentContainerStyle={{ paddingBottom: 32 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[isDarkMode ? "#FFFFFF" : "#000000"]}
+            tintColor={isDarkMode ? "#FFFFFF" : "#000000"}
+          />
         }
+        showsVerticalScrollIndicator={false}
       >
-        {filteredItems.map((item) => (
-          <View key={item._id} style={styles.card}>
-            <Image source={{ uri: item.image }} style={styles.cardImage} />
-            <View style={styles.cardContent}>
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <View style={styles.tagRow}>
-                <View style={styles.tag}>
-                  <Text style={styles.tagText}>{item.category}</Text>
+        {/* Search Bar */}
+        <View style={[styles.searchBox, { backgroundColor: theme.cardBg, borderColor: isDarkMode ? theme.cardBorder : "#000000" }]}>
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search items list..."
+            placeholderTextColor={theme.textSecondary}
+            style={[styles.searchInput, { color: theme.textPrimary }]}
+          />
+          <TouchableOpacity onPress={() => {}} style={styles.searchIconButton}>
+            <Ionicons name="search" size={20} color={theme.textPrimary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Categories Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Categories</Text>
+          <TouchableOpacity onPress={() => setSelectedCategory(null)}>
+            <Text style={[styles.viewAllText, { color: theme.textSecondary }]}>
+              {selectedCategory ? "Clear Filter" : "View All"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 4x2 Category Grid */}
+        <View style={styles.categoryGrid}>
+          {CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat.id;
+            return (
+              <TouchableOpacity
+                key={cat.id}
+                style={[
+                  styles.categoryCard,
+                  { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
+                  isSelected && {
+                    backgroundColor: isDarkMode ? "#FFFFFF" : "#000000",
+                    borderColor: isDarkMode ? "#FFFFFF" : "#000000",
+                  },
+                ]}
+                onPress={() => handleCategorySelect(cat.categoryKey, cat.id)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.categoryIconWrap}>
+                  {cat.iconFamily === "MCI" ? (
+                    <MaterialCommunityIcons
+                      name={cat.iconName as any}
+                      size={28}
+                      color={
+                        isSelected
+                          ? isDarkMode ? "#000000" : "#FFFFFF"
+                          : theme.textPrimary
+                      }
+                    />
+                  ) : (
+                    <Ionicons
+                      name={cat.iconName as any}
+                      size={28}
+                      color={
+                        isSelected
+                          ? isDarkMode ? "#000000" : "#FFFFFF"
+                          : theme.textPrimary
+                      }
+                    />
+                  )}
                 </View>
-                <View style={[styles.tag, styles.statusTag]}>
-                  <Text style={[styles.tagText, styles.statusText]}>
-                    {item.type === "found" ? "Found" : "Lost"}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Latest Posts Header */}
+        <View style={[styles.sectionHeader, { marginTop: 24 }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Latest Posts</Text>
+          <TouchableOpacity
+            style={styles.sortButton}
+            onPress={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+          >
+            <Text style={[styles.sortText, { color: theme.textSecondary }]}>
+              Sort By {sortOrder === "desc" ? "▲" : "▼"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Type Filter Pills (All / Found / Lost) */}
+        <View style={styles.typeFilterRow}>
+          {(["all", "found", "lost"] as const).map((t) => {
+            const isSelected = selectedType === t;
+            return (
+              <TouchableOpacity
+                key={t}
+                style={[
+                  styles.typePill,
+                  { backgroundColor: isDarkMode ? "#1E293B" : "#EAEAEA" },
+                  isSelected && { backgroundColor: isDarkMode ? "#FFFFFF" : "#000000" },
+                ]}
+                onPress={() => setSelectedType(t)}
+              >
+                <Text
+                  style={[
+                    styles.typePillText,
+                    { color: theme.textSecondary },
+                    isSelected && { color: isDarkMode ? "#000000" : "#FFFFFF" },
+                  ]}
+                >
+                  {t === "all" ? "All Posts" : t === "found" ? "Found Only" : "Lost Only"}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Latest Posts List */}
+        {filteredItems.length === 0 ? (
+          <View style={[styles.emptyState, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+            <Ionicons name="cube-outline" size={44} color={theme.textSecondary} />
+            <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>No items found</Text>
+            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+              {search || selectedCategory || selectedType !== "all"
+                ? "Try adjusting your search or category filter."
+                : "No reported lost or found items at the moment."}
+            </Text>
+          </View>
+        ) : (
+          filteredItems.map((item) => (
+            <TouchableOpacity
+              key={item._id}
+              style={[styles.postCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
+              activeOpacity={0.85}
+              onPress={() => {
+                setSelectedItemDetail(item);
+                setDetailModalVisible(true);
+              }}
+            >
+              {/* Left Image Thumbnail */}
+              <Image
+                source={{
+                  uri:
+                    item.image &&
+                    (item.image.startsWith("http") ||
+                      item.image.startsWith("data:"))
+                      ? item.image
+                      : "https://images.unsplash.com/photo-1544816155-12df9643f363?w=300&q=80",
+                }}
+                style={styles.postThumbnail}
+              />
+
+              {/* Middle Content */}
+              <View style={styles.postInfo}>
+                <Text style={[styles.postTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                  {item.title}
+                </Text>
+
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-outline" size={14} color={theme.textSecondary} />
+                  <Text style={[styles.locationText, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {item.location || "Campus"}
                   </Text>
                 </View>
-              </View>
-              <View style={styles.meta}>
-                <Ionicons name="location-outline" size={14} color="#666" />
-                <Text style={styles.metaText}>{item.location}</Text>
-              </View>
-              <Text style={styles.timeText}>
-                {new Date(item.createdAt).toLocaleString()}
-              </Text>
-            </View>
-            <View style={styles.actionsRow}>
-              {/* show status */}
-              <View style={styles.statusPill}>
-                <Text style={styles.statusPillText}>
-                  {item.status?.toUpperCase() || "OPEN"}
-                </Text>
-              </View>
-              {/* claim button: only show if open and not the owner */}
-              {item.status === "open" &&
-                user?.id !== (item.user?._id || item.user) && (
-                  <TouchableOpacity
-                    style={styles.claimButton}
-                    onPress={() => {
-                      setSelectedItemForClaim(item as Item);
-                      setClaimModalVisible(true);
-                    }}
+
+                {/* Status / Type Tag */}
+                <View style={styles.badgeRow}>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      item.type === "found" ? styles.badgeFound : styles.badgeLost,
+                    ]}
                   >
-                    <Text style={styles.claimButtonText}>Claim</Text>
-                  </TouchableOpacity>
-                )}
-            </View>
-            {item.type === "found" && (
-              <View style={styles.foundBadge}>
-                <Text style={styles.foundText}>Found</Text>
+                    <Text
+                      style={[
+                        styles.statusBadgeText,
+                        item.type === "found" ? styles.textFound : styles.textLost,
+                      ]}
+                    >
+                      {item.type === "found" ? "Found" : "Lost"}
+                    </Text>
+                  </View>
+
+                  {item.status && item.status !== "open" && (
+                    <View style={[styles.resolvedBadge, { backgroundColor: isDarkMode ? "#334155" : "#F3F4F6" }]}>
+                      <Text style={[styles.resolvedBadgeText, { color: theme.textSecondary }]}>
+                        {item.status}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
-            )}
-          </View>
-        ))}
+
+              {/* Right Arrow */}
+              <View style={styles.arrowContainer}>
+                <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
 
+      {/* Full-Screen Item Details Modal */}
+      <Modal
+        visible={detailModalVisible}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        statusBarTranslucent
+        onRequestClose={() => setDetailModalVisible(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={["top", "bottom"]}>
+          {selectedItemDetail && (
+            <View style={{ flex: 1 }}>
+              {/* Modal Top Bar */}
+              <View style={[styles.detailHeader, { borderBottomColor: theme.divider, backgroundColor: theme.cardBg }]}>
+                <Text style={[styles.detailHeaderTitle, { color: theme.textPrimary }]}>Item Details</Text>
+                <TouchableOpacity
+                  onPress={() => setDetailModalVisible(false)}
+                  style={styles.detailCloseButton}
+                >
+                  <Ionicons name="close" size={24} color={theme.textPrimary} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Large Item Image */}
+                <Image
+                  source={{
+                    uri:
+                      selectedItemDetail.image &&
+                      (selectedItemDetail.image.startsWith("http") ||
+                        selectedItemDetail.image.startsWith("data:"))
+                        ? selectedItemDetail.image
+                        : "https://images.unsplash.com/photo-1544816155-12df9643f363?w=600&q=80",
+                  }}
+                  style={styles.detailImage}
+                />
+
+                {/* Title & Badges */}
+                <Text style={[styles.detailTitle, { color: theme.textPrimary }]}>
+                  {selectedItemDetail.title}
+                </Text>
+                <View style={[styles.badgeRow, { marginBottom: 16 }]}>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      selectedItemDetail.type === "found" ? styles.badgeFound : styles.badgeLost,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.statusBadgeText,
+                        selectedItemDetail.type === "found" ? styles.textFound : styles.textLost,
+                      ]}
+                    >
+                      {selectedItemDetail.type === "found" ? "Found Item" : "Lost Item"}
+                    </Text>
+                  </View>
+                  <View style={[styles.categoryBadge, { backgroundColor: isDarkMode ? "#334155" : "#EAEAEA" }]}>
+                    <Text style={[styles.categoryBadgeText, { color: theme.textPrimary }]}>
+                      {selectedItemDetail.category}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Info Cards */}
+                <View style={[styles.detailCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+                  <View style={styles.detailCardRow}>
+                    <Ionicons name="location" size={18} color={theme.textPrimary} />
+                    <View style={{ marginLeft: 12, flex: 1 }}>
+                      <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Location</Text>
+                      <Text style={[styles.detailValue, { color: theme.textPrimary }]}>
+                        {selectedItemDetail.location}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {selectedItemDetail.date && (
+                    <View style={[styles.detailCardRow, { marginTop: 14 }]}>
+                      <Ionicons name="calendar" size={18} color={theme.textPrimary} />
+                      <View style={{ marginLeft: 12, flex: 1 }}>
+                        <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>
+                          {selectedItemDetail.type === "found" ? "Date Found" : "Date Lost"}
+                        </Text>
+                        <Text style={[styles.detailValue, { color: theme.textPrimary }]}>
+                          {selectedItemDetail.date}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {selectedItemDetail.contactInfo && (
+                    <View style={[styles.detailCardRow, { marginTop: 14 }]}>
+                      <Ionicons name="call" size={18} color={theme.textPrimary} />
+                      <View style={{ marginLeft: 12, flex: 1 }}>
+                        <Text style={[styles.detailLabel, { color: theme.textSecondary }]}>Contact Info</Text>
+                        <Text style={[styles.detailValue, { color: theme.textPrimary }]}>
+                          {selectedItemDetail.contactInfo}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+
+                {/* Description */}
+                <Text style={[styles.detailSectionTitle, { color: theme.textPrimary }]}>Description</Text>
+                <Text style={[styles.detailDescription, { color: theme.textSecondary }]}>
+                  {selectedItemDetail.description || "No additional description provided."}
+                </Text>
+
+                {/* Claim Button - Always active for open Found items */}
+                {selectedItemDetail.status === "open" &&
+                  selectedItemDetail.type === "found" && (
+                    <TouchableOpacity
+                      style={styles.claimActionButton}
+                      onPress={() => {
+                        setSelectedItemForClaim(selectedItemDetail);
+                        setClaimModalVisible(true);
+                      }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.claimActionButtonText}>
+                        Claim This Item
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+              </ScrollView>
+            </View>
+          )}
+        </SafeAreaView>
+      </Modal>
+
+      {/* Full-Screen Modernized Claim Submission Modal */}
       <Modal
         visible={claimModalVisible}
         animationType="slide"
         presentationStyle="fullScreen"
         statusBarTranslucent
       >
-        <SafeAreaView
-          style={{ flex: 1, backgroundColor: "#f8f9fa" }}
-          edges={["top"]}
-        >
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={["top", "bottom"]}>
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
           >
-            <View
-              style={{
-                padding: 16,
-                borderBottomWidth: 1,
-                borderBottomColor: "#eee",
-                backgroundColor: "#fff",
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <Text
-                style={{ fontSize: 18, fontWeight: "bold", color: "#1f2937" }}
+            {/* Modal Header */}
+            <View style={[styles.claimModalHeader, { borderBottomColor: theme.divider, backgroundColor: theme.cardBg }]}>
+              <View>
+                <Text style={[styles.claimModalTitle, { color: theme.textPrimary }]}>Submit Ownership Claim</Text>
+                <Text style={[styles.claimModalSubtitle, { color: theme.textSecondary }]}>
+                  {selectedItemForClaim?.title || "Item Claim"}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setClaimModalVisible(false)}
+                style={styles.modalCloseCircle}
               >
-                Submit Claim
-              </Text>
-              <TouchableOpacity onPress={() => setClaimModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#6b7280" />
+                <Ionicons name="close" size={22} color={theme.textPrimary} />
               </TouchableOpacity>
             </View>
+
             <ScrollView
-              contentContainerStyle={{ padding: 20 }}
+              contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
               keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
             >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  marginBottom: 6,
-                  color: "#374151",
-                }}
-              >
+              {/* Identifying Details */}
+              <Text style={[styles.formLabel, { color: theme.textPrimary }]}>
                 Describe details only the owner would know *
               </Text>
               <TextInput
-                style={{
-                  backgroundColor: "#fff",
-                  borderWidth: 1,
-                  borderColor: "#d1d5db",
-                  borderRadius: 8,
-                  padding: 12,
-                  minHeight: 80,
-                  textAlignVertical: "top",
-                  marginBottom: 4,
-                }}
-                placeholder="e.g. lock screen photo, scratches, keychain..."
+                style={[
+                  styles.textArea,
+                  { backgroundColor: theme.cardBg, borderColor: theme.cardBorder, color: theme.textPrimary },
+                ]}
+                placeholder="e.g., lock screen wallpaper, serial number, scratch marks, unique keychain..."
+                placeholderTextColor={theme.textSecondary}
                 multiline
                 value={proofDescription}
                 onChangeText={setProofDescription}
               />
-              {!proofDescription && submittingClaim ? (
-                <Text style={{ color: "red", fontSize: 12, marginBottom: 12 }}>
-                  This field is required.
-                </Text>
-              ) : (
-                <View style={{ marginBottom: 16 }} />
-              )}
 
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  marginBottom: 6,
-                  color: "#374151",
-                }}
-              >
-                Phone or Telegram username *
+              {/* Contact Info */}
+              <Text style={[styles.formLabel, { color: theme.textPrimary }]}>
+                Phone number or Telegram handle (@username) *
               </Text>
-              <TextInput
-                style={{
-                  backgroundColor: "#fff",
-                  borderWidth: 1,
-                  borderColor: "#d1d5db",
-                  borderRadius: 8,
-                  padding: 12,
-                  marginBottom: 4,
-                }}
-                placeholder="@username or 09..."
-                value={contactInfo}
-                onChangeText={setContactInfo}
-              />
-              {!contactInfo && submittingClaim ? (
-                <Text style={{ color: "red", fontSize: 12, marginBottom: 12 }}>
-                  This field is required.
-                </Text>
-              ) : (
-                <View style={{ marginBottom: 16 }} />
-              )}
+              <View style={[styles.formInputWithIcon, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+                <Ionicons name="call-outline" size={18} color={theme.textSecondary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.inputInner, { color: theme.textPrimary }]}
+                  placeholder="@username or 09..."
+                  placeholderTextColor={theme.textSecondary}
+                  value={contactInfo}
+                  onChangeText={setContactInfo}
+                />
+              </View>
 
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  marginBottom: 6,
-                  color: "#374151",
-                }}
-              >
-                Photo proof{" "}
-                <Text style={{ fontWeight: "400", color: "#9ca3af" }}>
-                  (optional)
-                </Text>
+              {/* Photo Proof Upload */}
+              <Text style={[styles.formLabel, { color: theme.textPrimary }]}>
+                Photo Proof (optional)
               </Text>
               <TouchableOpacity
                 onPress={pickProofImage}
-                style={{
-                  backgroundColor: "#fff",
-                  borderWidth: 1,
-                  borderColor: "#d1d5db",
-                  borderStyle: "dashed",
-                  padding: 16,
-                  borderRadius: 8,
-                  alignItems: "center",
-                  marginBottom: 16,
-                }}
+                style={[styles.proofUploadBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
+                activeOpacity={0.8}
               >
                 {proofImage ? (
-                  <Image
-                    source={{ uri: proofImage }}
-                    style={{ width: 60, height: 60, borderRadius: 8 }}
-                  />
+                  <View style={styles.proofPreviewWrapper}>
+                    <Image source={{ uri: proofImage }} style={styles.proofPreviewImg} />
+                    <View style={styles.proofPreviewOverlay}>
+                      <TouchableOpacity
+                        onPress={() => setProofImage(null)}
+                        style={styles.removeProofBtn}
+                      >
+                        <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 ) : (
-                  <Text style={{ color: "#6b7280" }}>Tap to upload</Text>
+                  <View style={{ alignItems: "center" }}>
+                    <View style={[styles.uploadIconCircle, { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" }]}>
+                      <Ionicons name="cloud-upload-outline" size={26} color={theme.textPrimary} />
+                    </View>
+                    <Text style={[styles.uploadText, { color: theme.textPrimary }]}>
+                      Tap to upload photo proof
+                    </Text>
+                    <Text style={[styles.uploadSubtext, { color: theme.textSecondary }]}>
+                      Receipt, old photo with item, or purchase box
+                    </Text>
+                  </View>
                 )}
               </TouchableOpacity>
 
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  marginBottom: 6,
-                  color: "#374151",
-                }}
-              >
-                Where you lost it{" "}
-                <Text style={{ fontWeight: "400", color: "#9ca3af" }}>
-                  (optional)
-                </Text>
+              {/* Where lost */}
+              <Text style={[styles.formLabel, { color: theme.textPrimary }]}>
+                Where you lost it (optional)
               </Text>
-              <TextInput
-                style={{
-                  backgroundColor: "#fff",
-                  borderWidth: 1,
-                  borderColor: "#d1d5db",
-                  borderRadius: 8,
-                  padding: 12,
-                  marginBottom: 16,
-                }}
-                placeholder="e.g. Library 2nd floor"
-                value={lostLocation}
-                onChangeText={setLostLocation}
-              />
+              <View style={[styles.formInputWithIcon, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+                <Ionicons name="location-outline" size={18} color={theme.textSecondary} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.inputInner, { color: theme.textPrimary }]}
+                  placeholder="e.g., Science Library 2nd Floor, Cafeteria"
+                  placeholderTextColor={theme.textSecondary}
+                  value={lostLocation}
+                  onChangeText={setLostLocation}
+                />
+              </View>
 
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "600",
-                  marginBottom: 6,
-                  color: "#374151",
-                }}
-              >
-                When you lost it{" "}
-                <Text style={{ fontWeight: "400", color: "#9ca3af" }}>
-                  (optional)
-                </Text>
+              {/* When lost Date Picker */}
+              <Text style={[styles.formLabel, { color: theme.textPrimary }]}>
+                When you lost it (optional)
               </Text>
-              <TextInput
-                style={{
-                  backgroundColor: "#fff",
-                  borderWidth: 1,
-                  borderColor: "#d1d5db",
-                  borderRadius: 8,
-                  padding: 12,
-                  marginBottom: 24,
-                }}
-                placeholder="YYYY-MM-DD"
-                value={lostDate}
-                onChangeText={setLostDate}
-              />
-
               <TouchableOpacity
-                style={{
-                  backgroundColor:
-                    !proofDescription || !contactInfo || submittingClaim
-                      ? "#9ca3af"
-                      : "#000000",
-                  padding: 16,
-                  borderRadius: 8,
-                  alignItems: "center",
-                  marginBottom: 32,
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 3,
-                }}
-                onPress={submitClaim}
-                disabled={!proofDescription || !contactInfo || submittingClaim}
+                style={[styles.formInputWithIcon, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder, justifyContent: "space-between" }]}
+                onPress={openClaimCalendar}
+                activeOpacity={0.8}
               >
-                <Text
-                  style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}
-                >
-                  {submittingClaim ? "Submitting..." : "Submit Claim"}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                  <Ionicons name="calendar-outline" size={18} color={theme.textSecondary} style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 14, color: lostDate ? theme.textPrimary : theme.textSecondary, fontWeight: lostDate ? "700" : "normal" }}>
+                    {lostDate || "Tap to select date from calendar"}
+                  </Text>
+                </View>
+                {lostDate ? (
+                  <TouchableOpacity onPress={() => setLostDate("")} style={{ padding: 4 }}>
+                    <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                ) : (
+                  <Ionicons name="chevron-down" size={16} color={theme.textSecondary} />
+                )}
+              </TouchableOpacity>
+
+              {/* Submit Claim Action */}
+              <TouchableOpacity
+                style={[
+                  styles.submitClaimBtn,
+                  (!proofDescription.trim() || !contactInfo.trim() || submittingClaim) && { opacity: 0.5 },
+                ]}
+                onPress={submitClaim}
+                disabled={!proofDescription.trim() || !contactInfo.trim() || submittingClaim}
+                activeOpacity={0.85}
+              >
+                {submittingClaim ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.submitClaimBtnText}>Submit Claim for Review</Text>
+                )}
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
 
-      {/* Notifications Inbox Modal */}
+      {/* Claim Calendar Picker Modal */}
+      <Modal
+        visible={claimCalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setClaimCalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.curvedCalendarModal, { backgroundColor: theme.cardBg }]}>
+            {/* Header */}
+            <View style={[styles.calModalHeader, { borderBottomColor: theme.divider }]}>
+              <View>
+                <Text style={[styles.calModalTitle, { color: theme.textPrimary }]}>Select Date Lost</Text>
+                <Text style={[styles.calModalSubtitle, { color: theme.textSecondary }]}>
+                  {claimCalSelectedDate || "Pick a date"}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setClaimCalVisible(false)} style={styles.modalCloseCircle}>
+                <Ionicons name="close" size={20} color={theme.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Month & Year Navigation */}
+            <View style={styles.calNavRow}>
+              <TouchableOpacity onPress={prevClaimMonth} style={[styles.calNavBtn, { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" }]}>
+                <Ionicons name="chevron-back" size={20} color={theme.textPrimary} />
+              </TouchableOpacity>
+              <Text style={[styles.calMonthYearText, { color: theme.textPrimary }]}>
+                {MONTH_NAMES[claimCalMonth]} {claimCalYear}
+              </Text>
+              <TouchableOpacity onPress={nextClaimMonth} style={[styles.calNavBtn, { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" }]}>
+                <Ionicons name="chevron-forward" size={20} color={theme.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Weekday Labels */}
+            <View style={[styles.weekDaysRow, { borderBottomColor: theme.divider }]}>
+              {DAYS_OF_WEEK.map((d) => (
+                <Text key={d} style={[styles.weekDayText, { color: theme.textSecondary }]}>
+                  {d}
+                </Text>
+              ))}
+            </View>
+
+            {/* Days Grid */}
+            <View style={styles.daysGrid}>
+              {Array.from({ length: firstDayOfClaimWeek }).map((_, idx) => (
+                <View key={`empty-${idx}`} style={styles.daySlot} />
+              ))}
+
+              {Array.from({ length: daysInClaimMonth }).map((_, idx) => {
+                const dayNum = idx + 1;
+                const formattedMonth = String(claimCalMonth + 1).padStart(2, "0");
+                const formattedDay = String(dayNum).padStart(2, "0");
+                const dateKey = `${claimCalYear}-${formattedMonth}-${formattedDay}`;
+                const isSelected = claimCalSelectedDate === dateKey;
+
+                return (
+                  <TouchableOpacity
+                    key={dateKey}
+                    style={[
+                      styles.daySlot,
+                      isSelected && { backgroundColor: isDarkMode ? "#FFFFFF" : "#000000" },
+                    ]}
+                    onPress={() => selectClaimDay(dayNum)}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        { color: theme.textPrimary },
+                        isSelected && { color: isDarkMode ? "#000000" : "#FFFFFF", fontWeight: "800" },
+                      ]}
+                    >
+                      {dayNum}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Modal Actions */}
+            <View style={[styles.calActionsRow, { borderTopColor: theme.divider }]}>
+              <TouchableOpacity
+                onPress={() => {
+                  const now = new Date();
+                  const yr = now.getFullYear();
+                  const mo = String(now.getMonth() + 1).padStart(2, "0");
+                  const dy = String(now.getDate()).padStart(2, "0");
+                  setClaimCalSelectedDate(`${yr}-${mo}-${dy}`);
+                }}
+                style={[styles.calTodayBtn, { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" }]}
+              >
+                <Text style={[styles.calTodayBtnText, { color: theme.textPrimary }]}>Today</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={confirmClaimDate}
+                style={[styles.calConfirmBtn, { backgroundColor: isDarkMode ? "#FFFFFF" : "#000000" }]}
+              >
+                <Text style={[styles.calConfirmBtnText, { color: isDarkMode ? "#000000" : "#FFFFFF" }]}>
+                  Confirm Date
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Notifications Modal */}
       <Modal
         visible={notifModalVisible}
         animationType="slide"
         presentationStyle="fullScreen"
         statusBarTranslucent
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
-          <StatusBar barStyle="dark-content" />
-
-          {/* Compact Top Bar */}
-          <View style={styles.header}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={["top", "bottom"]}>
+          <View style={[styles.claimModalHeader, { borderBottomColor: theme.divider, backgroundColor: theme.cardBg }]}>
             <View>
-              <Text style={styles.appName}>Notifications</Text>
-              <Text style={styles.subtitle}>Activity & Claim Updates</Text>
+              <Text style={[styles.appName, { color: theme.textPrimary }]}>Notifications</Text>
+              <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Activity & Claim Updates</Text>
             </View>
-            <TouchableOpacity
-              style={styles.bellButton}
-              onPress={() => setNotifModalVisible(false)}
-            >
-              <Ionicons name="close-outline" size={24} color="#000" />
+            <TouchableOpacity onPress={() => setNotifModalVisible(false)} style={styles.modalCloseCircle}>
+              <Ionicons name="close" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 16, flexGrow: 1 }}>
+          <ScrollView contentContainerStyle={{ padding: 16, flexGrow: 1 }} showsVerticalScrollIndicator={false}>
             {notifications.length === 0 ? (
               <View style={{ padding: 40, alignItems: "center" }}>
-                <Ionicons
-                  name="notifications-off-outline"
-                  size={48}
-                  color="#ccc"
-                />
-                <Text style={{ color: "#888", marginTop: 12, fontSize: 15 }}>
+                <Ionicons name="notifications-off-outline" size={48} color={theme.textSecondary} />
+                <Text style={{ color: theme.textSecondary, marginTop: 12, fontSize: 15 }}>
                   No notifications yet.
                 </Text>
               </View>
@@ -667,16 +1010,13 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   key={item._id}
                   onPress={() => markNotificationRead(item._id)}
-                  style={{
-                    backgroundColor: item.read ? "#fff" : "#f0f4ff",
-                    borderWidth: 1,
-                    borderColor: item.read ? "#eee" : "#c7d2fe",
-                    borderRadius: 12,
-                    padding: 14,
-                    marginBottom: 10,
-                    flexDirection: "row",
-                    alignItems: "center",
-                  }}
+                  style={[
+                    styles.notifCard,
+                    {
+                      backgroundColor: item.read ? theme.cardBg : isDarkMode ? "#334155" : "#F4F4F5",
+                      borderColor: theme.cardBorder,
+                    },
+                  ]}
                 >
                   <View style={{ marginRight: 12 }}>
                     <Ionicons
@@ -688,41 +1028,16 @@ export default function HomeScreen() {
                             : "information-circle-outline"
                       }
                       size={28}
-                      color="#000"
+                      color={theme.textPrimary}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 15,
-                          fontWeight: "bold",
-                          color: "#000",
-                        }}
-                      >
-                        {item.title}
-                      </Text>
-                      {!item.read && (
-                        <View
-                          style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: "#000",
-                          }}
-                        />
-                      )}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                      <Text style={[styles.notifTitle, { color: theme.textPrimary }]}>{item.title}</Text>
+                      {!item.read && <View style={[styles.unreadDot, { backgroundColor: theme.textPrimary }]} />}
                     </View>
-                    <Text style={{ fontSize: 13, color: "#444", marginTop: 4 }}>
-                      {item.message}
-                    </Text>
-                    <Text style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
+                    <Text style={[styles.notifMessage, { color: theme.textSecondary }]}>{item.message}</Text>
+                    <Text style={[styles.notifTime, { color: theme.textSecondary }]}>
                       {new Date(item.createdAt).toLocaleString()}
                     </Text>
                   </View>
@@ -741,111 +1056,549 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
-  appName: { fontSize: 20, fontWeight: "bold", color: "#000" },
-  subtitle: { fontSize: 11, color: "#666" },
+  appName: {
+    fontSize: 22,
+    fontWeight: "800",
+  },
+  subtitle: {
+    fontSize: 12,
+    marginTop: 1,
+  },
   bellButton: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
     position: "relative",
   },
   badge: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    backgroundColor: "#000",
-    borderRadius: 9,
+    top: 4,
+    right: 4,
+    borderRadius: 8,
     minWidth: 16,
     height: 16,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 3,
   },
-  badgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
-  searchContainer: {
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "bold",
+  },
+  scrollFeed: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    marginHorizontal: 16,
-    marginVertical: 8,
+    borderWidth: 1.5,
     borderRadius: 12,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     height: 48,
-    borderWidth: 1,
-    borderColor: "#eee",
+    marginTop: 10,
+    marginBottom: 20,
   },
-  searchIcon: { marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 16, color: "#000" },
-  toggleContainer: {
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+  },
+  searchIconButton: {
+    padding: 4,
+  },
+  sectionHeader: {
     flexDirection: "row",
-    marginHorizontal: 16,
-    marginVertical: 8,
-    backgroundColor: "#eee",
-    borderRadius: 12,
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  viewAllText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 12,
+  },
+  categoryCard: {
+    width: "22%",
+    aspectRatio: 1,
+    borderRadius: 14,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
     overflow: "hidden",
   },
-  toggleButton: { flex: 1, paddingVertical: 12, alignItems: "center" },
-  toggleActive: { backgroundColor: "#000" },
-  toggleText: { fontWeight: "600", color: "#666", fontSize: 15 },
-  toggleTextActive: { color: "#fff" },
-  feed: { flex: 1, paddingHorizontal: 16 },
-  card: {
-    backgroundColor: "#fff",
+  categoryIconWrap: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sortButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  sortText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  typeFilterRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 14,
+  },
+  typePill: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+  },
+  typePillText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  postCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1.5,
+  },
+  postThumbnail: {
+    width: 68,
+    height: 68,
+    borderRadius: 10,
+    backgroundColor: "#F3F4F6",
+  },
+  postInfo: {
+    flex: 1,
+    marginLeft: 14,
+    justifyContent: "center",
+  },
+  postTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  locationText: {
+    fontSize: 13,
+    marginLeft: 3,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeFound: {
+    backgroundColor: "#DCFCE7",
+  },
+  badgeLost: {
+    backgroundColor: "#FEE2E2",
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  textFound: {
+    color: "#15803D",
+  },
+  textLost: {
+    color: "#DC2626",
+  },
+  resolvedBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  resolvedBadgeText: {
+    fontSize: 10,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  arrowContainer: {
+    paddingLeft: 8,
+  },
+  emptyState: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 16,
+    borderWidth: 1,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 12,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 4,
+  },
+  detailHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  detailHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  detailCloseButton: {
+    padding: 4,
+  },
+  detailImage: {
+    width: "100%",
+    height: 240,
+    borderRadius: 16,
+    backgroundColor: "#F3F4F6",
+    marginBottom: 16,
+  },
+  detailTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 8,
+  },
+  categoryBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  categoryBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  detailCard: {
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+  },
+  detailCardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  detailLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    textTransform: "uppercase",
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginTop: 1,
+  },
+  detailSectionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  detailDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  claimActionButton: {
+    backgroundColor: "#16A34A",
+    paddingVertical: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#16A34A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  claimActionButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  claimModalHeader: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  claimModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  claimModalSubtitle: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  modalCloseCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  formLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 6,
+  },
+  formInputWithIcon: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    minHeight: 48,
+    marginBottom: 16,
+  },
+  inputInner: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 10,
+  },
+  textArea: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    minHeight: 88,
+    fontSize: 14,
+    textAlignVertical: "top",
+    marginBottom: 16,
+  },
+  proofUploadBox: {
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    padding: 18,
+    borderRadius: 14,
+    alignItems: "center",
     marginBottom: 16,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#eee",
+  },
+  uploadIconCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  uploadText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  uploadSubtext: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  proofPreviewWrapper: {
+    width: "100%",
+    height: 140,
     position: "relative",
   },
-  cardImage: { width: "100%", height: 180, resizeMode: "cover" },
-  cardContent: { padding: 12 },
-  cardTitle: { fontSize: 17, fontWeight: "bold", marginBottom: 6 },
-  tagRow: { flexDirection: "row", gap: 8, marginBottom: 8 },
-  tag: {
-    backgroundColor: "#f0f0f0",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  tagText: { fontSize: 13, color: "#444", fontWeight: "500" },
-  statusTag: { backgroundColor: "#e0ffe0" },
-  statusText: { color: "#006600", fontWeight: "600" },
-  meta: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-  metaText: { fontSize: 14, color: "#666", marginLeft: 4 },
-  timeText: { fontSize: 13, color: "#888" },
-  foundBadge: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    backgroundColor: "#000",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  foundText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
-  actionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-  },
-  claimButton: {
-    backgroundColor: "#088b15",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  proofPreviewImg: {
+    width: "100%",
+    height: "100%",
     borderRadius: 10,
   },
-  claimButtonText: { color: "#fff", fontWeight: "600" },
-  statusPill: {
-    backgroundColor: "#eee",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  proofPreviewOverlay: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+  },
+  removeProofBtn: {
+    backgroundColor: "rgba(0,0,0,0.7)",
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  submitClaimBtn: {
+    backgroundColor: "#16A34A",
+    paddingVertical: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 8,
+    shadowColor: "#16A34A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  submitClaimBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 15,
+  },
+  notifCard: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  notifTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  notifMessage: {
+    fontSize: 13,
+    marginTop: 3,
+  },
+  notifTime: {
+    fontSize: 11,
+    marginTop: 5,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
+  // Modal Overlay
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  curvedCalendarModal: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 28,
+    padding: 22,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  calModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    paddingBottom: 12,
+  },
+  calModalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  calModalSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  calNavRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  calNavBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  calMonthYearText: {
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  weekDaysRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    paddingBottom: 6,
+  },
+  weekDayText: {
+    fontSize: 12,
+    fontWeight: "700",
+    width: 36,
+    textAlign: "center",
+  },
+  daysGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  daySlot: {
+    width: "14.28%",
+    aspectRatio: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 2,
+    borderRadius: 18,
+  },
+  dayText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  calActionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 18,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    gap: 10,
+  },
+  calTodayBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 12,
   },
-  statusPillText: { fontSize: 12, color: "#333", fontWeight: "600" },
+  calTodayBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  calConfirmBtn: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  calConfirmBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
 });
