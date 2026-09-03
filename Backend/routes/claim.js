@@ -12,7 +12,24 @@ const { protect, adminOnly } = require("../middleware/authMiddleware");
 */
 router.post("/", protect, async (req, res) => {
   try {
-    const { itemId, message } = req.body;
+    const {
+      itemId,
+      proof_description,
+      proof_image,
+      lost_location,
+      lost_date,
+      contact_info,
+      message,
+    } = req.body;
+
+    const desc = proof_description || message;
+    const contact = contact_info || req.user.email;
+
+    if (!itemId || !desc) {
+      return res.status(400).json({
+        message: "Item ID and proof description are required.",
+      });
+    }
 
     const item = await Item.findById(itemId);
     if (!item) {
@@ -23,17 +40,30 @@ router.post("/", protect, async (req, res) => {
     const existing = await Claim.findOne({
       item: itemId,
       claimant: req.user._id,
+      status: "pending",
     });
 
     if (existing) {
-      return res.status(400).json({ message: "You already claimed this item" });
+      return res
+        .status(409)
+        .json({ message: "You already have a pending claim for this item." });
     }
 
     const claim = await Claim.create({
       item: itemId,
       claimant: req.user._id,
-      message,
+      proof_description: desc,
+      proof_image: proof_image || undefined,
+      lost_location: lost_location || undefined,
+      lost_date: lost_date || undefined,
+      contact_info: contact,
     });
+
+    if (item.status === "open") {
+      item.status = "pending";
+      if (!item.claimant) item.claimant = req.user._id;
+      await item.save();
+    }
 
     res.status(201).json(claim);
   } catch (error) {
@@ -66,8 +96,6 @@ router.get("/", protect, adminOnly, async (req, res) => {
       sortObj[sortBy] = sortDir === "asc" ? 1 : -1;
     }
 
-    // Because we want to search claimant name or item title, it's easier to fetch and then filter if q is present
-    // but a basic search on the claim document is fine. Let's rely on standard populate first.
     let claims = await Claim.find(filter)
       .populate("item")
       .populate("claimant")
@@ -75,7 +103,6 @@ router.get("/", protect, adminOnly, async (req, res) => {
 
     if (q) {
       const lowerQ = q.toLowerCase();
-      // Also filter by populated fields manually if not matched by db query
       claims = claims.filter(
         (c) =>
           (c.proof_description &&

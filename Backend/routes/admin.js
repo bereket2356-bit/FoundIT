@@ -6,6 +6,7 @@ const User = require("../models/User");
 const Setting = require("../models/Setting");
 const bcrypt = require("bcryptjs");
 const { protect, adminOnly } = require("../middleware/authMiddleware");
+const { generatePdfReport } = require("../utils/pdfReportGenerator");
 
 // GET /api/admin/stats
 router.get("/stats", protect, adminOnly, async (req, res) => {
@@ -35,8 +36,6 @@ router.get("/stats", protect, adminOnly, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
-
-const { generatePdfReport } = require("../utils/pdfReportGenerator");
 
 // Helper to compute date range intervals
 function computeDateRanges(range, customStart, customEnd) {
@@ -128,9 +127,16 @@ async function getAggregatedReportData(range, customStart, customEnd) {
   }
 
   // 3. Claim Resolution Data & Approval Rate (Case Insensitive)
+  const claimResolutionAgg = await Claim.aggregate([
     ...(start && end ? [{ $match: claimMatch }] : []),
     {
       $group: {
+        _id: "$status",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+
   let approved = 0,
     rejected = 0,
     pending = 0;
@@ -147,6 +153,14 @@ async function getAggregatedReportData(range, customStart, customEnd) {
     { name: "Pending", value: pending },
   ];
 
+  const resolvedClaims = approved + rejected;
+  const approvalRate =
+    resolvedClaims > 0
+      ? Math.round((approved / resolvedClaims) * 100)
+      : totalClaims > 0
+        ? Math.round((approved / totalClaims) * 100)
+        : 0;
+
   // 4. Average Time to Resolve a Claim
   const avgResolutionAgg = await Claim.aggregate([
     {
@@ -157,6 +171,7 @@ async function getAggregatedReportData(range, customStart, customEnd) {
     },
     {
       $project: {
+        diffHours: {
           $divide: [
             { $subtract: ["$updatedAt", "$createdAt"] },
             1000 * 60 * 60,
@@ -202,12 +217,15 @@ async function getAggregatedReportData(range, customStart, customEnd) {
   const topCategoriesData = topCategories.map((cat) => ({
     name: cat._id
       ? cat._id.charAt(0).toUpperCase() + cat._id.slice(1)
-       }));
+      : "General",
+    value: cat.value,
+  }));
 
   const topCategory =
     topCategoriesData.length > 0 ? topCategoriesData[0].name : "None";
   const topCategoryCount =
     topCategoriesData.length > 0 ? topCategoriesData[0].value : 0;
+
   // 6. Most Common Lost/Found Location
   const topLocations = await Item.aggregate([
     {
@@ -217,11 +235,13 @@ async function getAggregatedReportData(range, customStart, customEnd) {
       },
     },
     { $group: { _id: "$location", count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
     { $limit: 1 },
   ]);
 
   const topLocation =
     topLocations.length > 0 && topLocations[0]._id
+      ? topLocations[0]._id
       : "Campus Wide";
 
   // 7. Items Over Time (Case Insensitive lost/found)
@@ -235,6 +255,7 @@ async function getAggregatedReportData(range, customStart, customEnd) {
             $cond: [
               { $eq: [{ $toLower: { $ifNull: ["$type", "lost"] } }, "lost"] },
               1,
+              0,
             ],
           },
         },
@@ -242,6 +263,24 @@ async function getAggregatedReportData(range, customStart, customEnd) {
           $sum: {
             $cond: [
               { $eq: [{ $toLower: { $ifNull: ["$type", "found"] } }, "found"] },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  const itemsReportedData = itemsOverTime.map((item) => ({
+    name: item._id,
+    lost: item.lost,
+    found: item.found,
+  }));
+
+  // 8. Breakdown items for table view
+  const breakdownItems = await Item.find(itemMatch)
     .populate("user", "name email")
     .sort({ createdAt: -1 })
     .limit(100)
@@ -254,10 +293,12 @@ async function getAggregatedReportData(range, customStart, customEnd) {
       totalClaims,
       claimsTrend,
       approvalRate,
+      resolvedClaims,
       avgResolutionTime,
       topCategory,
       topCategoryCount,
       topLocation,
+    },
     itemsReportedData,
     topCategoriesData,
     claimResolutionData,

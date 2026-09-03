@@ -29,35 +29,43 @@ router.post("/signup", async (req, res) => {
         .json({ message: "Please fill in all required fields." });
     }
 
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res
-        .status(400)
-        .json({ message: "User with this email already exists." });
-    }
-
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
     const verificationCode = generateCode();
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    const user = await User.create({
-      name: name.trim(),
-      email,
-      password: hashedPassword,
-      role: "user",
-      authProvider: "local",
-      isVerified: false,
-      verificationToken: verificationCode,
-      verificationTokenExpires: verificationExpires,
-      lastVerificationResend: new Date(),
-    });
+    let user = await User.findOne({ email });
 
-    // Send verification email in the background for instant response
-    sendVerificationEmail(user.email, user.name, verificationCode).catch((e) =>
-      console.log("Background email send error:", e.message),
-    );
+    if (user) {
+      if (user.isVerified) {
+        return res.status(400).json({
+          message: "User with this email already exists. Please log in.",
+        });
+      }
+
+      // Existing unverified account -> update details and re-send code
+      user.name = name.trim();
+      user.password = hashedPassword;
+      user.verificationToken = verificationCode;
+      user.verificationTokenExpires = verificationExpires;
+      user.lastVerificationResend = new Date();
+      await user.save();
+    } else {
+      user = await User.create({
+        name: name.trim(),
+        email,
+        password: hashedPassword,
+        role: "user",
+        authProvider: "local",
+        isVerified: false,
+        verificationToken: verificationCode,
+        verificationTokenExpires: verificationExpires,
+        lastVerificationResend: new Date(),
+      });
+    }
+
+    // Send verification email immediately
+    await sendVerificationEmail(user.email, user.name, verificationCode);
 
     res.status(201).json({
       message:
@@ -66,6 +74,7 @@ router.post("/signup", async (req, res) => {
       requiresVerification: true,
     });
   } catch (error) {
+    console.error("[AUTH SIGNUP ERROR]", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -140,7 +149,7 @@ router.post("/verify-email", async (req, res) => {
   }
 });
 
-// 🟢 RESEND VERIFICATION CODE (Rate limited: 1 min)
+// 🟢 RESEND VERIFICATION CODE (Rate limited: 60 seconds cooldown)
 router.post("/resend-verification", async (req, res) => {
   let { email } = req.body;
   if (email) email = email.trim().toLowerCase();
@@ -179,16 +188,13 @@ router.post("/resend-verification", async (req, res) => {
     user.lastVerificationResend = new Date();
     await user.save();
 
-    try {
-      await sendVerificationEmail(user.email, user.name, verificationCode);
-    } catch (e) {
-      console.log("Error resending verification email:", e.message);
-    }
+    await sendVerificationEmail(user.email, user.name, verificationCode);
 
     res.json({
       message: "A new 6-digit verification code has been sent to your email.",
     });
   } catch (error) {
+    console.error("[RESEND VERIFICATION ERROR]", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -340,11 +346,7 @@ router.post("/forgot-password", async (req, res) => {
       user.resetPasswordExpires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
       await user.save();
 
-      try {
-        await sendPasswordResetEmail(user.email, user.name, resetCode);
-      } catch (e) {
-        console.log("Error sending password reset email:", e.message);
-      }
+      await sendPasswordResetEmail(user.email, user.name, resetCode);
     }
 
     // Generic response to prevent email enumeration
