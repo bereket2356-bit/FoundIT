@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import API, { BASE_URL } from "../api";
+import ReportItemModal from "../components/ReportItemModal";
 import UserCell from "../components/UserCell";
 
 const debounce = (func, wait) => {
@@ -24,6 +25,7 @@ const LostItems = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Search, Filter, Sort state
   const [search, setSearch] = useState("");
@@ -226,8 +228,11 @@ const LostItems = () => {
             )}
           </div>
 
-          <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-            + Report Lost Item
+          <button
+            onClick={() => setShowReportModal(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm flex items-center gap-1.5"
+          >
+            <span className="text-lg leading-none">+</span> Report Lost Item
           </button>
         </div>
 
@@ -365,6 +370,16 @@ const LostItems = () => {
           </div>
         )}
       </div>
+
+      <ReportItemModal
+        isOpen={showReportModal}
+        onClose={() => setShowReportModal(false)}
+        defaultType="lost"
+        onItemCreated={(newItem) => {
+          setItems((prev) => [newItem, ...prev]);
+          fetchLostItems();
+        }}
+      />
     </div>
   );
 };
