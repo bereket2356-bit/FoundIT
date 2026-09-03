@@ -55,7 +55,9 @@ export default function ProfileScreen() {
 
   // Edit Profile State
   const [editName, setEditName] = useState(user.name || "");
-  const [editAvatar, setEditAvatar] = useState<string | null>(user.avatar || null);
+  const [editAvatar, setEditAvatar] = useState<string | null>(
+    user.avatar || null,
+  );
   const [savingProfile, setSavingProfile] = useState(false);
 
   const totalPosts = items.length;
@@ -65,7 +67,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchItems();
-    }, [])
+    }, []),
   );
 
   const fetchItems = async () => {
@@ -153,7 +155,11 @@ export default function ProfileScreen() {
   };
 
   const handleSaveProfile = async () => {
-    if (!editName || editName.trim().length < 2 || editName.trim().length > 30) {
+    if (
+      !editName ||
+      editName.trim().length < 2 ||
+      editName.trim().length > 30
+    ) {
       showAlert({
         title: "Invalid Username",
         message: "Username must be between 2 and 30 characters.",
@@ -171,7 +177,7 @@ export default function ProfileScreen() {
           name: editName.trim(),
           avatar: editAvatar || "",
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       updateUser({
@@ -206,7 +212,10 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={["top"]}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: theme.bg }}
+      edges={["top"]}
+    >
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
 
       <ScrollView
@@ -222,51 +231,121 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Card */}
-        <View style={[styles.profileCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-          <TouchableOpacity onPress={openEditModal} activeOpacity={0.8} style={styles.avatarWrapper}>
+        <View
+          style={[
+            styles.profileCard,
+            { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={openEditModal}
+            activeOpacity={0.8}
+            style={styles.avatarWrapper}
+          >
             <Image
-              source={{ uri: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || "User")}&background=000&color=fff` }}
+              source={{
+                uri:
+                  user.avatar ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || "User")}&background=000&color=fff`,
+              }}
               style={styles.avatar}
             />
-            <View style={[styles.editBadge, { backgroundColor: isDarkMode ? "#FFFFFF" : "#000000" }]}>
-              <Ionicons name="camera" size={14} color={isDarkMode ? "#000000" : "#FFFFFF"} />
+            <View
+              style={[
+                styles.editBadge,
+                { backgroundColor: isDarkMode ? "#FFFFFF" : "#000000" },
+              ]}
+            >
+              <Ionicons
+                name="camera"
+                size={14}
+                color={isDarkMode ? "#000000" : "#FFFFFF"}
+              />
             </View>
           </TouchableOpacity>
 
-          <Text style={[styles.name, { color: theme.textPrimary }]}>{user.name || "FoundIT User"}</Text>
-          <Text style={[styles.email, { color: theme.textSecondary }]}>{user.email}</Text>
+          <Text style={[styles.name, { color: theme.textPrimary }]}>
+            {user.name || "FoundIT User"}
+          </Text>
+          <Text style={[styles.email, { color: theme.textSecondary }]}>
+            {user.email}
+          </Text>
 
-          <TouchableOpacity style={[styles.editButton, { backgroundColor: theme.btnPrimary }]} onPress={openEditModal}>
-            <Text style={[styles.editText, { color: theme.btnPrimaryText }]}>Edit Profile</Text>
+          <TouchableOpacity
+            style={[styles.editButton, { backgroundColor: theme.btnPrimary }]}
+            onPress={openEditModal}
+          >
+            <Text style={[styles.editText, { color: theme.btnPrimaryText }]}>
+              Edit Profile
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsContainer}>
-          <View style={[styles.statBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-            <Text style={[styles.statNumber, { color: theme.textPrimary }]}>{totalPosts}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total Posts</Text>
+          <View
+            style={[
+              styles.statBox,
+              { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
+            ]}
+          >
+            <Text style={[styles.statNumber, { color: theme.textPrimary }]}>
+              {totalPosts}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Total Posts
+            </Text>
           </View>
 
-          <View style={[styles.statBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-            <Text style={[styles.statNumber, { color: "#16A34A" }]}>{foundCount}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Found</Text>
+          <View
+            style={[
+              styles.statBox,
+              { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
+            ]}
+          >
+            <Text style={[styles.statNumber, { color: "#16A34A" }]}>
+              {foundCount}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Found
+            </Text>
           </View>
 
-          <View style={[styles.statBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-            <Text style={[styles.statNumber, { color: "#DC2626" }]}>{lostCount}</Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Lost</Text>
+          <View
+            style={[
+              styles.statBox,
+              { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
+            ]}
+          >
+            <Text style={[styles.statNumber, { color: "#DC2626" }]}>
+              {lostCount}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Lost
+            </Text>
           </View>
         </View>
 
         {/* App Settings & Theme Section */}
-        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Preferences & Info</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+          Preferences & Info
+        </Text>
 
-        <View style={[styles.menuCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+        <View
+          style={[
+            styles.menuCard,
+            { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
+          ]}
+        >
           {/* Dark Mode Switch */}
           <View style={[styles.menuRow, { borderBottomColor: theme.divider }]}>
             <View style={styles.menuRowLeft}>
-              <View style={[styles.menuIconBox, { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" }]}>
+              <View
+                style={[
+                  styles.menuIconBox,
+                  { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" },
+                ]}
+              >
                 <Ionicons
                   name={isDarkMode ? "moon" : "sunny"}
                   size={20}
@@ -274,10 +353,17 @@ export default function ProfileScreen() {
                 />
               </View>
               <View>
-                <Text style={[styles.menuRowTitle, { color: theme.textPrimary }]}>
+                <Text
+                  style={[styles.menuRowTitle, { color: theme.textPrimary }]}
+                >
                   {isDarkMode ? "Dark Mode" : "Light Mode"}
                 </Text>
-                <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>
+                <Text
+                  style={[
+                    styles.menuRowSubtitle,
+                    { color: theme.textSecondary },
+                  ]}
+                >
                   {isDarkMode ? "Night theme active" : "Bright clean theme"}
                 </Text>
               </View>
@@ -297,15 +383,39 @@ export default function ProfileScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.menuRowLeft}>
-              <View style={[styles.menuIconBox, { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" }]}>
-                <Ionicons name="information-circle-outline" size={20} color={theme.textPrimary} />
+              <View
+                style={[
+                  styles.menuIconBox,
+                  { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" },
+                ]}
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={20}
+                  color={theme.textPrimary}
+                />
               </View>
               <View>
-                <Text style={[styles.menuRowTitle, { color: theme.textPrimary }]}>About Us</Text>
-                <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>FoundIT mission and campus vision</Text>
+                <Text
+                  style={[styles.menuRowTitle, { color: theme.textPrimary }]}
+                >
+                  About Us
+                </Text>
+                <Text
+                  style={[
+                    styles.menuRowSubtitle,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  FoundIT mission and campus vision
+                </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.textSecondary}
+            />
           </TouchableOpacity>
 
           {/* Terms of Service */}
@@ -315,15 +425,39 @@ export default function ProfileScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.menuRowLeft}>
-              <View style={[styles.menuIconBox, { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" }]}>
-                <Ionicons name="document-text-outline" size={20} color={theme.textPrimary} />
+              <View
+                style={[
+                  styles.menuIconBox,
+                  { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" },
+                ]}
+              >
+                <Ionicons
+                  name="document-text-outline"
+                  size={20}
+                  color={theme.textPrimary}
+                />
               </View>
               <View>
-                <Text style={[styles.menuRowTitle, { color: theme.textPrimary }]}>Terms of Service</Text>
-                <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>Usage guidelines and community rules</Text>
+                <Text
+                  style={[styles.menuRowTitle, { color: theme.textPrimary }]}
+                >
+                  Terms of Service
+                </Text>
+                <Text
+                  style={[
+                    styles.menuRowSubtitle,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  Usage guidelines and community rules
+                </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.textSecondary}
+            />
           </TouchableOpacity>
 
           {/* Privacy Policy */}
@@ -333,23 +467,63 @@ export default function ProfileScreen() {
             activeOpacity={0.7}
           >
             <View style={styles.menuRowLeft}>
-              <View style={[styles.menuIconBox, { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" }]}>
-                <Ionicons name="shield-checkmark-outline" size={20} color={theme.textPrimary} />
+              <View
+                style={[
+                  styles.menuIconBox,
+                  { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" },
+                ]}
+              >
+                <Ionicons
+                  name="shield-checkmark-outline"
+                  size={20}
+                  color={theme.textPrimary}
+                />
               </View>
               <View>
-                <Text style={[styles.menuRowTitle, { color: theme.textPrimary }]}>Privacy Policy</Text>
-                <Text style={[styles.menuRowSubtitle, { color: theme.textSecondary }]}>How your data & posts are protected</Text>
+                <Text
+                  style={[styles.menuRowTitle, { color: theme.textPrimary }]}
+                >
+                  Privacy Policy
+                </Text>
+                <Text
+                  style={[
+                    styles.menuRowSubtitle,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  How your data & posts are protected
+                </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.textSecondary}
+            />
           </TouchableOpacity>
         </View>
 
         {/* My Posts Section */}
-        <Text style={[styles.sectionTitle, { color: theme.textPrimary, marginTop: 24 }]}>My Posts</Text>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: theme.textPrimary, marginTop: 24 },
+          ]}
+        >
+          My Posts
+        </Text>
         {items.length === 0 ? (
-          <View style={[styles.emptyBox, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-            <Ionicons name="cube-outline" size={40} color={theme.textSecondary} />
+          <View
+            style={[
+              styles.emptyBox,
+              { backgroundColor: theme.cardBg, borderColor: theme.cardBorder },
+            ]}
+          >
+            <Ionicons
+              name="cube-outline"
+              size={40}
+              color={theme.textSecondary}
+            />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
               You haven’t posted any lost or found items yet.
             </Text>
@@ -358,19 +532,30 @@ export default function ProfileScreen() {
           items.map((item) => (
             <View
               key={item._id}
-              style={[styles.rowCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
+              style={[
+                styles.rowCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
             >
               <Image
                 source={{
                   uri:
-                    item.image && (item.image.startsWith("http") || item.image.startsWith("data:"))
+                    item.image &&
+                    (item.image.startsWith("http") ||
+                      item.image.startsWith("data:"))
                       ? item.image
                       : "https://images.unsplash.com/photo-1544816155-12df9643f363?w=300&q=80",
                 }}
                 style={styles.rowImage}
               />
               <View style={styles.rowContent}>
-                <Text style={[styles.rowTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+                <Text
+                  style={[styles.rowTitle, { color: theme.textPrimary }]}
+                  numberOfLines={1}
+                >
                   {item.title}
                 </Text>
 
@@ -378,13 +563,17 @@ export default function ProfileScreen() {
                   <View
                     style={[
                       styles.statusBadge,
-                      item.type === "found" ? styles.badgeFound : styles.badgeLost,
+                      item.type === "found"
+                        ? styles.badgeFound
+                        : styles.badgeLost,
                     ]}
                   >
                     <Text
                       style={[
                         styles.statusBadgeText,
-                        item.type === "found" ? styles.textFound : styles.textLost,
+                        item.type === "found"
+                          ? styles.textFound
+                          : styles.textLost,
                       ]}
                     >
                       {item.type === "found" ? "Found" : "Lost"}
@@ -392,16 +581,38 @@ export default function ProfileScreen() {
                   </View>
 
                   {item.status && (
-                    <View style={[styles.resolvedBadge, { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" }]}>
-                      <Text style={[styles.resolvedBadgeText, { color: theme.textSecondary }]}>{item.status}</Text>
+                    <View
+                      style={[
+                        styles.resolvedBadge,
+                        { backgroundColor: isDarkMode ? "#334155" : "#F1F5F9" },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.resolvedBadgeText,
+                          { color: theme.textSecondary },
+                        ]}
+                      >
+                        {item.status}
+                      </Text>
                     </View>
                   )}
                 </View>
 
                 {item.location && (
                   <View style={styles.metaRow}>
-                    <Ionicons name="location-outline" size={12} color={theme.textSecondary} />
-                    <Text style={[styles.rowLocation, { color: theme.textSecondary }]} numberOfLines={1}>
+                    <Ionicons
+                      name="location-outline"
+                      size={12}
+                      color={theme.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.rowLocation,
+                        { color: theme.textSecondary },
+                      ]}
+                      numberOfLines={1}
+                    >
                       {item.location}
                     </Text>
                   </View>
@@ -412,8 +623,17 @@ export default function ProfileScreen() {
         )}
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.85}>
-          <Ionicons name="log-out-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name="log-out-outline"
+            size={18}
+            color="#FFFFFF"
+            style={{ marginRight: 6 }}
+          />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -426,52 +646,116 @@ export default function ProfileScreen() {
         statusBarTranslucent
         onRequestClose={() => setEditModalVisible(false)}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={["top", "bottom"]}>
+        <SafeAreaView
+          style={{ flex: 1, backgroundColor: theme.bg }}
+          edges={["top", "bottom"]}
+        >
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === "ios" ? "padding" : "height"}
           >
-            <View style={[styles.modalHeader, { borderBottomColor: theme.divider, backgroundColor: theme.cardBg }]}>
-              <Text style={[styles.modalHeaderTitle, { color: theme.textPrimary }]}>Edit Profile</Text>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)} style={styles.modalCloseCircle}>
+            <View
+              style={[
+                styles.modalHeader,
+                {
+                  borderBottomColor: theme.divider,
+                  backgroundColor: theme.cardBg,
+                },
+              ]}
+            >
+              <Text
+                style={[styles.modalHeaderTitle, { color: theme.textPrimary }]}
+              >
+                Edit Profile
+              </Text>
+              <TouchableOpacity
+                onPress={() => setEditModalVisible(false)}
+                style={styles.modalCloseCircle}
+              >
                 <Ionicons name="close" size={24} color={theme.textPrimary} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+            <ScrollView
+              contentContainerStyle={{ padding: 20 }}
+              keyboardShouldPersistTaps="handled"
+            >
               {/* Avatar Preview */}
               <View style={{ alignItems: "center", marginBottom: 24 }}>
                 <Image
                   source={{
-                    uri: editAvatar || user.avatar || "https://via.placeholder.com/150",
+                    uri:
+                      editAvatar ||
+                      user.avatar ||
+                      "https://via.placeholder.com/150",
                   }}
                   style={styles.editAvatarLarge}
                 />
                 <View style={{ flexDirection: "row", gap: 12 }}>
                   <TouchableOpacity
                     onPress={pickFromGallery}
-                    style={[styles.avatarPickBtn, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
+                    style={[
+                      styles.avatarPickBtn,
+                      {
+                        backgroundColor: theme.cardBg,
+                        borderColor: theme.cardBorder,
+                      },
+                    ]}
                   >
-                    <Ionicons name="images-outline" size={16} color={theme.textPrimary} />
-                    <Text style={[styles.avatarPickBtnText, { color: theme.textPrimary }]}>Gallery</Text>
+                    <Ionicons
+                      name="images-outline"
+                      size={16}
+                      color={theme.textPrimary}
+                    />
+                    <Text
+                      style={[
+                        styles.avatarPickBtnText,
+                        { color: theme.textPrimary },
+                      ]}
+                    >
+                      Gallery
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
                     onPress={takePhotoWithCamera}
-                    style={[styles.avatarPickBtn, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
+                    style={[
+                      styles.avatarPickBtn,
+                      {
+                        backgroundColor: theme.cardBg,
+                        borderColor: theme.cardBorder,
+                      },
+                    ]}
                   >
-                    <Ionicons name="camera-outline" size={16} color={theme.textPrimary} />
-                    <Text style={[styles.avatarPickBtnText, { color: theme.textPrimary }]}>Camera</Text>
+                    <Ionicons
+                      name="camera-outline"
+                      size={16}
+                      color={theme.textPrimary}
+                    />
+                    <Text
+                      style={[
+                        styles.avatarPickBtnText,
+                        { color: theme.textPrimary },
+                      ]}
+                    >
+                      Camera
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
               {/* Username Input */}
-              <Text style={[styles.formLabel, { color: theme.textPrimary }]}>Username *</Text>
+              <Text style={[styles.formLabel, { color: theme.textPrimary }]}>
+                Username *
+              </Text>
               <TextInput
                 style={[
                   styles.formInput,
-                  { backgroundColor: theme.cardBg, borderColor: theme.cardBorder, color: theme.textPrimary },
+                  {
+                    backgroundColor: theme.cardBg,
+                    borderColor: theme.cardBorder,
+                    color: theme.textPrimary,
+                  },
                 ]}
                 value={editName}
                 onChangeText={setEditName}
@@ -489,7 +773,14 @@ export default function ProfileScreen() {
                 {savingProfile ? (
                   <ActivityIndicator color={theme.btnPrimaryText} />
                 ) : (
-                  <Text style={[styles.saveBtnText, { color: theme.btnPrimaryText }]}>Save Changes</Text>
+                  <Text
+                    style={[
+                      styles.saveBtnText,
+                      { color: theme.btnPrimaryText },
+                    ]}
+                  >
+                    Save Changes
+                  </Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -505,49 +796,126 @@ export default function ProfileScreen() {
         statusBarTranslucent
         onRequestClose={() => setAboutModalVisible(false)}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={["top", "bottom"]}>
-          <View style={[styles.modalHeader, { borderBottomColor: theme.divider, backgroundColor: theme.cardBg }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <SafeAreaView
+          style={{ flex: 1, backgroundColor: theme.bg }}
+          edges={["top", "bottom"]}
+        >
+          <View
+            style={[
+              styles.modalHeader,
+              {
+                borderBottomColor: theme.divider,
+                backgroundColor: theme.cardBg,
+              },
+            ]}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+            >
               <TouchableOpacity onPress={() => setAboutModalVisible(false)}>
-                <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
+                <Ionicons
+                  name="arrow-back"
+                  size={24}
+                  color={theme.textPrimary}
+                />
               </TouchableOpacity>
-              <Text style={[styles.modalHeaderTitle, { color: theme.textPrimary }]}>About FoundIT</Text>
+              <Text
+                style={[styles.modalHeaderTitle, { color: theme.textPrimary }]}
+              >
+                About FoundIT
+              </Text>
             </View>
-            <TouchableOpacity onPress={() => setAboutModalVisible(false)} style={styles.modalCloseCircle}>
+            <TouchableOpacity
+              onPress={() => setAboutModalVisible(false)}
+              style={styles.modalCloseCircle}
+            >
               <Ionicons name="close" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 50 }} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={{ padding: 24, paddingBottom: 50 }}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.aboutHeaderBox}>
-              <View style={[styles.aboutLogoCircle, { backgroundColor: isDarkMode ? "#FFFFFF" : "#000000" }]}>
-                <Ionicons name="search" size={32} color={isDarkMode ? "#000000" : "#FFFFFF"} />
+              <View
+                style={[
+                  styles.aboutLogoCircle,
+                  { backgroundColor: isDarkMode ? "#FFFFFF" : "#000000" },
+                ]}
+              >
+                <Ionicons
+                  name="search"
+                  size={32}
+                  color={isDarkMode ? "#000000" : "#FFFFFF"}
+                />
               </View>
-              <Text style={[styles.aboutAppName, { color: theme.textPrimary }]}>FoundIT Campus</Text>
-              <Text style={[styles.aboutVersion, { color: theme.textSecondary }]}>Version 1.0.0 (Production Build)</Text>
-            </View>
-
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>Our Mission</Text>
-              <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                FoundIT is a community-driven digital lost and found platform built specifically for university campus students, faculty, and staff. Our goal is to connect lost belongings with their rightful owners rapidly, transparently, and securely.
+              <Text style={[styles.aboutAppName, { color: theme.textPrimary }]}>
+                FoundIT Campus
+              </Text>
+              <Text
+                style={[styles.aboutVersion, { color: theme.textSecondary }]}
+              >
+                Version 1.0.0 (Production Build)
               </Text>
             </View>
 
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>How It Works</Text>
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                Our Mission
+              </Text>
               <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                • Anyone who finds an item can post a picture, description, and location in seconds.{"\n"}
-                • Owners can browse or search the catalog and submit a private claim with identifying details.{"\n"}
-                • Campus administration reviews claim details to ensure safe and accurate returns.
+                FoundIT is a community-driven digital lost and found platform
+                built specifically for university campus students, faculty, and
+                staff. Our goal is to connect lost belongings with their
+                rightful owners rapidly, transparently, and securely.
               </Text>
             </View>
 
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>Contact & Support</Text>
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                How It Works
+              </Text>
               <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                Email: support@foundit-campus.edu{"\n"}
-                Office: Student Services Building, Room 204{"\n"}
+                • Anyone who finds an item can post a picture, description, and
+                location in seconds.{"\n"}• Owners can browse or search the
+                catalog and submit a private claim with identifying details.
+                {"\n"}• Campus administration reviews claim details to ensure
+                safe and accurate returns.
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                Contact & Support
+              </Text>
+              <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
+                Email: bereket2356@gmail.com{"\n"}
+                Telegram: @babitoko{"\n"}
                 Hours: Mon - Fri, 8:30 AM - 5:00 PM
               </Text>
             </View>
@@ -563,45 +931,119 @@ export default function ProfileScreen() {
         statusBarTranslucent
         onRequestClose={() => setTermsModalVisible(false)}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={["top", "bottom"]}>
-          <View style={[styles.modalHeader, { borderBottomColor: theme.divider, backgroundColor: theme.cardBg }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <SafeAreaView
+          style={{ flex: 1, backgroundColor: theme.bg }}
+          edges={["top", "bottom"]}
+        >
+          <View
+            style={[
+              styles.modalHeader,
+              {
+                borderBottomColor: theme.divider,
+                backgroundColor: theme.cardBg,
+              },
+            ]}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+            >
               <TouchableOpacity onPress={() => setTermsModalVisible(false)}>
-                <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
+                <Ionicons
+                  name="arrow-back"
+                  size={24}
+                  color={theme.textPrimary}
+                />
               </TouchableOpacity>
-              <Text style={[styles.modalHeaderTitle, { color: theme.textPrimary }]}>Terms of Service</Text>
+              <Text
+                style={[styles.modalHeaderTitle, { color: theme.textPrimary }]}
+              >
+                Terms of Service
+              </Text>
             </View>
-            <TouchableOpacity onPress={() => setTermsModalVisible(false)} style={styles.modalCloseCircle}>
+            <TouchableOpacity
+              onPress={() => setTermsModalVisible(false)}
+              style={styles.modalCloseCircle}
+            >
               <Ionicons name="close" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 50 }} showsVerticalScrollIndicator={false}>
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>1. Acceptance of Terms</Text>
+          <ScrollView
+            contentContainerStyle={{ padding: 24, paddingBottom: 50 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                1. Acceptance of Terms
+              </Text>
               <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                By accessing and using FoundIT, you agree to comply with all campus regulations, local laws, and these community guidelines.
+                By accessing and using FoundIT, you agree to comply with all
+                campus regulations, local laws, and these community guidelines.
               </Text>
             </View>
 
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>2. Honest Reporting & Claims</Text>
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                2. Honest Reporting & Claims
+              </Text>
               <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                Users must provide accurate information when reporting lost or found items. Submitting fraudulent claims for items you do not own is strictly prohibited and will result in account suspension and referral to campus disciplinary authorities.
+                Users must provide accurate information when reporting lost or
+                found items. Submitting fraudulent claims for items you do not
+                own is strictly prohibited and will result in account suspension
+                and referral to campus disciplinary authorities.
               </Text>
             </View>
 
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>3. Prohibited Content</Text>
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                3. Prohibited Content
+              </Text>
               <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                Users may not post offensive, illegal, defamatory, or copyrighted content. Items involving hazardous materials or weapons must be reported directly to Campus Security.
+                Users may not post offensive, illegal, defamatory, or
+                copyrighted content. Items involving hazardous materials or
+                weapons must be reported directly to Campus Security.
               </Text>
             </View>
 
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>4. Admin Review & Verification</Text>
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                4. Admin Review & Verification
+              </Text>
               <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                FoundIT administrators reserve the right to review, edit, or remove any post, and to verify claims prior to releasing items.
+                FoundIT administrators reserve the right to review, edit, or
+                remove any post, and to verify claims prior to releasing items.
               </Text>
             </View>
           </ScrollView>
@@ -616,45 +1058,120 @@ export default function ProfileScreen() {
         statusBarTranslucent
         onRequestClose={() => setPrivacyModalVisible(false)}
       >
-        <SafeAreaView style={{ flex: 1, backgroundColor: theme.bg }} edges={["top", "bottom"]}>
-          <View style={[styles.modalHeader, { borderBottomColor: theme.divider, backgroundColor: theme.cardBg }]}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+        <SafeAreaView
+          style={{ flex: 1, backgroundColor: theme.bg }}
+          edges={["top", "bottom"]}
+        >
+          <View
+            style={[
+              styles.modalHeader,
+              {
+                borderBottomColor: theme.divider,
+                backgroundColor: theme.cardBg,
+              },
+            ]}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+            >
               <TouchableOpacity onPress={() => setPrivacyModalVisible(false)}>
-                <Ionicons name="arrow-back" size={24} color={theme.textPrimary} />
+                <Ionicons
+                  name="arrow-back"
+                  size={24}
+                  color={theme.textPrimary}
+                />
               </TouchableOpacity>
-              <Text style={[styles.modalHeaderTitle, { color: theme.textPrimary }]}>Privacy Policy</Text>
+              <Text
+                style={[styles.modalHeaderTitle, { color: theme.textPrimary }]}
+              >
+                Privacy Policy
+              </Text>
             </View>
-            <TouchableOpacity onPress={() => setPrivacyModalVisible(false)} style={styles.modalCloseCircle}>
+            <TouchableOpacity
+              onPress={() => setPrivacyModalVisible(false)}
+              style={styles.modalCloseCircle}
+            >
               <Ionicons name="close" size={24} color={theme.textPrimary} />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 50 }} showsVerticalScrollIndicator={false}>
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>1. Information We Collect</Text>
+          <ScrollView
+            contentContainerStyle={{ padding: 24, paddingBottom: 50 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                1. Information We Collect
+              </Text>
               <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                We collect minimal information necessary to deliver the service, including your name, campus email address, uploaded photos of items, and contact details provided when reporting or claiming items.
+                We collect minimal information necessary to deliver the service,
+                including your name, campus email address, uploaded photos of
+                items, and contact details provided when reporting or claiming
+                items.
               </Text>
             </View>
 
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>2. How Your Information Is Used</Text>
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                2. How Your Information Is Used
+              </Text>
               <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                Your information is used strictly to authenticate your account, display items on the campus feed, and facilitate claim communication between owners and administrators.
+                Your information is used strictly to authenticate your account,
+                display items on the campus feed, and facilitate claim
+                communication between owners and administrators.
               </Text>
             </View>
 
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>3. Data Security & Storage</Text>
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                3. Data Security & Storage
+              </Text>
               <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                All network communications are encrypted via SSL/TLS. Sensitive tokens and passwords are cryptographically hashed and never stored in plain text.
+                All network communications are encrypted via SSL/TLS. Sensitive
+                tokens and passwords are cryptographically hashed and never
+                stored in plain text.
               </Text>
             </View>
 
-            <View style={[styles.legalCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>4. Contact Us</Text>
+            <View
+              style={[
+                styles.legalCard,
+                {
+                  backgroundColor: theme.cardBg,
+                  borderColor: theme.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.legalHeading, { color: theme.textPrimary }]}>
+                4. Contact Us
+              </Text>
               <Text style={[styles.legalBody, { color: theme.textSecondary }]}>
-                If you have any questions regarding your data privacy, please contact privacy@foundit-campus.edu.
+                If you have any questions regarding your data privacy, please
+                contact bereket2356@gmail.com.
               </Text>
             </View>
           </ScrollView>
