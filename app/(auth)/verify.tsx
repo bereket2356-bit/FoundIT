@@ -152,6 +152,8 @@ export default function VerifyEmailScreen() {
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
         >
           {/* Logo */}
           <View style={styles.logoContainer}>

@@ -149,6 +149,8 @@ export default function ForgotPassword() {
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
         >
           {/* Header */}
           <View style={styles.logoContainer}>

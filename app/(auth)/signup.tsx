@@ -123,12 +123,15 @@ export default function SignUp() {
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
         >
           <View style={styles.logoContainer}>
             <View style={styles.logoBox}>
               <Ionicons name="cube-outline" size={40} color="#000" />
             </View>
             <Text style={styles.title}>FoundIT</Text>
+            <Text style={styles.subtitle}>Campus Lost & Found Platform</Text>
           </View>
 
           <View style={styles.card}>
@@ -261,6 +264,10 @@ export default function SignUp() {
               <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
           </View>
+
+          <Text style={styles.footer}>
+            By continuing, you agree to our Terms of Service and Privacy Policy
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -287,6 +294,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 24,
     fontWeight: "bold",
+  },
+  subtitle: {
+    color: "#ccc",
+    marginBottom: 20,
   },
   card: {
     backgroundColor: "#f2f2f2",
@@ -374,5 +385,12 @@ const styles = StyleSheet.create({
     color: "#000",
     fontWeight: "bold",
     fontSize: 14,
+  },
+  footer: {
+    textAlign: "center",
+    color: "#aaa",
+    fontSize: 12,
+    marginTop: 20,
+    marginBottom: 20,
   },
 });

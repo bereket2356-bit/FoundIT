@@ -122,6 +122,8 @@ export default function Login() {
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          showsHorizontalScrollIndicator={false}
         >
           {/* Logo */}
           <View style={styles.logoContainer}>
