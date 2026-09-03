@@ -17,9 +17,9 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User>({
-    name: "John Doe",
-    email: "john@example.com",
-    avatar: "https://via.placeholder.com/150",
+    name: "",
+    email: "",
+    avatar: "",
     id: "",
   });
 
