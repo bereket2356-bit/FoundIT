@@ -36,69 +36,263 @@ router.get("/stats", protect, adminOnly, async (req, res) => {
   }
 });
 
-// GET /api/admin/reports
-router.get("/reports", protect, adminOnly, async (req, res) => {
-  try {
-    // 1. Items Reported Over Time (last 30 days or general grouping by month/day)
-    // We'll group by YYYY-MM-DD
-    const itemsOverTime = await Item.aggregate([
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          lost: { $sum: { $cond: [{ $eq: ["$type", "lost"] }, 1, 0] } },
-          found: { $sum: { $cond: [{ $eq: ["$type", "found"] }, 1, 0] } },
+const { generatePdfReport } = require("../utils/pdfReportGenerator");
+
+// Helper to compute date range intervals
+function computeDateRanges(range, customStart, customEnd) {
+  const now = new Date();
+  let start = null;
+  let end = new Date();
+  let prevStart = null;
+  let prevEnd = null;
+  let rangeLabel = "All Time";
+
+  if (range === "7d") {
+    start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    prevStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    prevEnd = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    rangeLabel = "Last 7 Days";
+  } else if (range === "30d" || !range) {
+    start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    prevStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+    prevEnd = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    rangeLabel = "Last 30 Days";
+  } else if (range === "semester") {
+    start = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
+    prevStart = new Date(now.getTime() - 240 * 24 * 60 * 60 * 1000);
+    prevEnd = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
+    rangeLabel = "This Semester (120 Days)";
+  } else if (range === "custom" && customStart && customEnd) {
+    start = new Date(customStart);
+    end = new Date(customEnd);
+    end.setHours(23, 59, 59, 999);
+    const duration = end.getTime() - start.getTime();
+    prevEnd = new Date(start.getTime() - 1);
+    prevStart = new Date(start.getTime() - duration);
+    rangeLabel = `${start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+  } else if (range === "all") {
+    start = null;
+    end = now;
+    prevStart = null;
+    prevEnd = null;
+    rangeLabel = "All Time";
+  }
+
+  return { start, end, prevStart, prevEnd, rangeLabel };
+}
+
+async function getAggregatedReportData(range, customStart, customEnd) {
+  const { start, end, prevStart, prevEnd, rangeLabel } = computeDateRanges(
+    range,
+    customStart,
+    customEnd,
+  );
+
+  const itemMatch = {};
+  const claimMatch = {};
+  if (start && end) {
+    itemMatch.createdAt = { $gte: start, $lte: end };
+    claimMatch.createdAt = { $gte: start, $lte: end };
+  }
+
+  // 1. Total Items Posted (Current & Trend vs Previous Period)
+  const totalItems = await Item.countDocuments(itemMatch);
+  let itemsTrend = null;
+  if (prevStart && prevEnd) {
+    const prevItems = await Item.countDocuments({
+      createdAt: { $gte: prevStart, $lte: prevEnd },
+    });
+    if (prevItems > 0) {
+      itemsTrend = Math.round(((totalItems - prevItems) / prevItems) * 100);
+    } else if (totalItems > 0) {
+      itemsTrend = 100;
+    } else {
+      itemsTrend = 0;
+    }
+  }
+
+  // 2. Total Claims Submitted (Current & Trend vs Previous Period)
+  const totalClaims = await Claim.countDocuments(claimMatch);
+  let claimsTrend = null;
+  if (prevStart && prevEnd) {
+    const prevClaims = await Claim.countDocuments({
+      createdAt: { $gte: prevStart, $lte: prevEnd },
+    });
+    if (prevClaims > 0) {
+      claimsTrend = Math.round(((totalClaims - prevClaims) / prevClaims) * 100);
+    } else if (totalClaims > 0) {
+      claimsTrend = 100;
+    } else {
+      claimsTrend = 0;
+    }
+  }
+
+  // 3. Claim Resolution Data & Approval Rate (Case Insensitive)
+    ...(start && end ? [{ $match: claimMatch }] : []),
+    {
+      $group: {
+  let approved = 0,
+    rejected = 0,
+    pending = 0;
+  claimResolutionAgg.forEach((c) => {
+    const s = (c._id || "").toLowerCase();
+    if (s === "approved") approved += c.count;
+    else if (s === "rejected") rejected += c.count;
+    else pending += c.count;
+  });
+
+  const claimResolutionData = [
+    { name: "Approved", value: approved },
+    { name: "Rejected", value: rejected },
+    { name: "Pending", value: pending },
+  ];
+
+  // 4. Average Time to Resolve a Claim
+  const avgResolutionAgg = await Claim.aggregate([
+    {
+      $match: {
+        status: { $in: ["approved", "rejected", "Approved", "Rejected"] },
+        ...(start && end ? { updatedAt: { $gte: start, $lte: end } } : {}),
+      },
+    },
+    {
+      $project: {
+          $divide: [
+            { $subtract: ["$updatedAt", "$createdAt"] },
+            1000 * 60 * 60,
+          ],
         },
       },
-      { $sort: { _id: 1 } },
-    ]);
+    },
+    {
+      $group: {
+        _id: null,
+        avgHours: { $avg: "$diffHours" },
+      },
+    },
+  ]);
 
-    // Map to expected frontend format (e.g., name, lost, found)
-    const itemsReportedData = itemsOverTime.map((item) => ({
-      name: item._id,
-      lost: item.lost,
-      found: item.found,
-    }));
+  let avgResolutionTime = "N/A";
+  if (avgResolutionAgg.length > 0 && avgResolutionAgg[0].avgHours !== null) {
+    const hours = avgResolutionAgg[0].avgHours;
+    if (hours < 1) {
+      avgResolutionTime = `${Math.max(1, Math.round(hours * 60))}m`;
+    } else if (hours < 24) {
+      avgResolutionTime = `${hours.toFixed(1)}h`;
+    } else {
+      avgResolutionTime = `${(hours / 24).toFixed(1)}d`;
+    }
+  }
 
-    // 2. Top Lost Categories
-    const topCategories = await Item.aggregate([
-      { $match: { type: "lost" } },
-      { $group: { _id: "$category", value: { $sum: 1 } } },
-      { $sort: { value: -1 } },
-      { $limit: 5 }, // top 5
-    ]);
+  // 5. Top Categories in Period
+  const topCategories = await Item.aggregate([
+    ...(start && end ? [{ $match: itemMatch }] : []),
+    {
+      $group: {
+        _id: {
+          $cond: [{ $ifNull: ["$category", false] }, "$category", "General"],
+        },
+        value: { $sum: 1 },
+      },
+    },
+    { $sort: { value: -1 } },
+    { $limit: 6 },
+  ]);
 
-    const topCategoriesData = topCategories.map((cat) => ({
-      name: cat._id || "Uncategorized",
-      value: cat.value,
-    }));
+  const topCategoriesData = topCategories.map((cat) => ({
+    name: cat._id
+      ? cat._id.charAt(0).toUpperCase() + cat._id.slice(1)
+       }));
 
-    // 3. Claim Resolution Rate
-    const claims = await Claim.aggregate([
-      { $group: { _id: "$status", count: { $sum: 1 } } },
-    ]);
+  const topCategory =
+    topCategoriesData.length > 0 ? topCategoriesData[0].name : "None";
+  const topCategoryCount =
+    topCategoriesData.length > 0 ? topCategoriesData[0].value : 0;
+  // 6. Most Common Lost/Found Location
+  const topLocations = await Item.aggregate([
+    {
+      $match: {
+        ...(start && end ? itemMatch : {}),
+        location: { $exists: true, $ne: "" },
+      },
+    },
+    { $group: { _id: "$location", count: { $sum: 1 } } },
+    { $limit: 1 },
+  ]);
 
-    let approved = 0,
-      rejected = 0,
-      pending = 0;
-    claims.forEach((c) => {
-      if (c._id === "approved") approved = c.count;
-      else if (c._id === "rejected") rejected = c.count;
-      else if (c._id === "pending") pending = c.count;
-    });
+  const topLocation =
+    topLocations.length > 0 && topLocations[0]._id
+      : "Campus Wide";
 
-    const claimResolutionData = [
-      { name: "Approved", value: approved },
-      { name: "Rejected", value: rejected },
-      { name: "Pending", value: pending },
-    ];
+  // 7. Items Over Time (Case Insensitive lost/found)
+  const itemsOverTime = await Item.aggregate([
+    ...(start && end ? [{ $match: itemMatch }] : []),
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        lost: {
+          $sum: {
+            $cond: [
+              { $eq: [{ $toLower: { $ifNull: ["$type", "lost"] } }, "lost"] },
+              1,
+            ],
+          },
+        },
+        found: {
+          $sum: {
+            $cond: [
+              { $eq: [{ $toLower: { $ifNull: ["$type", "found"] } }, "found"] },
+    .populate("user", "name email")
+    .sort({ createdAt: -1 })
+    .limit(100)
+    .lean();
 
-    res.json({
-      itemsReportedData,
-      topCategoriesData,
-      claimResolutionData,
-    });
+  return {
+    kpis: {
+      totalItems,
+      itemsTrend,
+      totalClaims,
+      claimsTrend,
+      approvalRate,
+      avgResolutionTime,
+      topCategory,
+      topCategoryCount,
+      topLocation,
+    itemsReportedData,
+    topCategoriesData,
+    claimResolutionData,
+    breakdownItems,
+    rangeLabel,
+  };
+}
+
+// GET /api/admin/reports (Enhanced with KPIs, Trends, Breakdown Table)
+router.get("/reports", protect, adminOnly, async (req, res) => {
+  try {
+    const { range, startDate, endDate } = req.query;
+    const reportData = await getAggregatedReportData(range, startDate, endDate);
+    res.json(reportData);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// GET /api/admin/reports/export-pdf (Generates downloadable PDF report)
+router.get("/reports/export-pdf", protect, adminOnly, async (req, res) => {
+  try {
+    const { range, startDate, endDate } = req.query;
+    const reportData = await getAggregatedReportData(range, startDate, endDate);
+
+    const safeDateStr = new Date().toISOString().split("T")[0];
+    const filename = `FoundIT_Report_${range || "all"}_${safeDateStr}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    generatePdfReport(reportData, { rangeLabel: reportData.rangeLabel }, res);
+  } catch (error) {
+    console.error("PDF generation error:", error);
+    res.status(500).json({ message: "Failed to generate PDF report." });
   }
 });
 
