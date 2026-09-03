@@ -22,6 +22,7 @@ import { useUser } from "../../context/Usercontext";
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID =
+  process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
   "1075224924633-pj0jekr7eq81hqie2so2lt97dhina7lr.apps.googleusercontent.com";
 
 export default function Login() {
