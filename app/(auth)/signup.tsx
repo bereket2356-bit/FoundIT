@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { makeRedirectUri } from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -39,6 +40,9 @@ export default function SignUp() {
     iosClientId: GOOGLE_CLIENT_ID,
     androidClientId: GOOGLE_CLIENT_ID,
     webClientId: GOOGLE_CLIENT_ID,
+    redirectUri: makeRedirectUri({
+      scheme: "foundit",
+    }),
   });
 
   useEffect(() => {
