@@ -23,7 +23,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
-  "1075224924633-pj0jekr7eq81hqie2so2lt97dhina7lr.apps.googleusercontent.com";
+  "777294337139-uc75crta4s4k6tvlrlt6uvf0lfrl0908.apps.googleusercontent.com";
 
 export default function SignUp() {
   const [secure, setSecure] = useState(true);
