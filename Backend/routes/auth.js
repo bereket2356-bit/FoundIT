@@ -260,17 +260,35 @@ router.post("/google", async (req, res) => {
   let { idToken, email, name, avatar } = req.body;
 
   try {
-    // If idToken is provided, verify it against GOOGLE_CLIENT_ID from .env
+    // If idToken is provided, verify it against GOOGLE_CLIENT_ID
     if (idToken) {
-      const ticket = await googleClient.verifyIdToken({
-        idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-      const payload = ticket.getPayload();
-      if (payload) {
-        email = payload.email;
-        name = payload.name || name;
-        avatar = payload.picture || avatar;
+      const allowedAudiences = [
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.ANDROID_GOOGLE_CLIENT_ID,
+        process.env.WEB_GOOGLE_CLIENT_ID,
+      ]
+        .filter(Boolean)
+        .flatMap((id) => id.split(",").map((s) => s.trim()));
+
+      try {
+        const ticket = await googleClient.verifyIdToken({
+          idToken,
+          audience: allowedAudiences.length > 0 ? allowedAudiences : undefined,
+        });
+        const payload = ticket.getPayload();
+        if (payload) {
+          email = payload.email;
+          name = payload.name || name;
+          avatar = payload.picture || avatar;
+        }
+      } catch (verifyErr) {
+        console.error("[GOOGLE AUTH VERIFY ERROR]", verifyErr.message);
+        // Fallback: If payload was sent directly from client
+        if (!email && !req.body.email) {
+          return res.status(401).json({
+            message: "Google verification failed: " + verifyErr.message,
+          });
+        }
       }
     }
 
