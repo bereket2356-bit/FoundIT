@@ -4,57 +4,64 @@ let transporter = null;
 
 const getSenderEmail = (name = "FoundIT Team") => {
   if (process.env.SMTP_FROM) return process.env.SMTP_FROM;
-  if (process.env.BREVO_SENDER_EMAIL) return `"${name}" <${process.env.BREVO_SENDER_EMAIL}>`;
-  if (process.env.SMTP_USER) return `"${name}" <${process.env.SMTP_USER}>`;
+  if (process.env.BREVO_SENDER_EMAIL) return `"${name}" <${process.env.BREVO_SENDER_EMAIL.trim()}>`;
+  if (process.env.SMTP_USER) return `"${name}" <${process.env.SMTP_USER.trim()}>`;
   return `"${name}" <noreply@foundit.app>`;
 };
 
 // 1. Send via Brevo REST API (HTTPS port 443 - zero domain restriction, instant cloud delivery)
 const sendViaBrevo = async (to, name, subject, html, fromName) => {
-  const apiKey = process.env.BREVO_API_KEY;
-  if (!apiKey) return null;
+  const apiKey = (process.env.BREVO_API_KEY || "").trim();
+  if (!apiKey) {
+    console.warn("[BREVO] No BREVO_API_KEY found in process.env");
+    return null;
+  }
 
   try {
-    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || "bereket2356@gmail.com";
+    const senderEmail = (process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || "bereket2356@gmail.com").trim();
+    console.log(`[BREVO] Attempting to send to ${to} from ${senderEmail} via Brevo REST API...`);
+
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
         "api-key": apiKey,
         "Content-Type": "application/json",
+        "accept": "application/json",
       },
       body: JSON.stringify({
         sender: { name: fromName, email: senderEmail },
-        to: [{ email: to, name: name || to }],
+        to: [{ email: to.trim().toLowerCase(), name: (name || to).trim() }],
         subject: subject,
         htmlContent: html,
       }),
     });
 
     const data = await response.json();
-    if (response.ok && data.messageId) {
-      console.log(`[EMAIL REST BREVO SUCCESS] Sent to ${to} (id: ${data.messageId})`);
-      return { messageId: data.messageId, provider: "brevo" };
+    if (response.ok && (data.messageId || data.id)) {
+      const msgId = data.messageId || data.id;
+      console.log(`[EMAIL REST BREVO SUCCESS] Sent to ${to} (id: ${msgId})`);
+      return { messageId: msgId, provider: "brevo" };
     } else {
-      console.error("[EMAIL BREVO ERROR]", data);
+      console.error("[EMAIL BREVO ERROR RESPONSE]", JSON.stringify(data));
       return null;
     }
   } catch (err) {
-    console.error("[EMAIL BREVO FETCH ERROR]", err.message);
+    console.error("[EMAIL BREVO FETCH EXCEPTION]", err.message);
     return null;
   }
 };
 
 // 2. Send via Nodemailer SMTP (For local environments / unblocked SMTP ports)
 const createEmailTransporter = () => {
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpHost = process.env.SMTP_HOST;
+  const smtpUser = (process.env.SMTP_USER || "").trim();
+  const smtpPass = (process.env.SMTP_PASS || "").trim();
+  const smtpHost = (process.env.SMTP_HOST || "smtp.gmail.com").trim();
   const smtpPort = Number(process.env.SMTP_PORT) || 587;
 
   if (smtpUser && smtpPass) {
     const isGmail =
-      (smtpHost && smtpHost.includes("gmail")) ||
-      (smtpUser && smtpUser.endsWith("@gmail.com"));
+      smtpHost.includes("gmail") ||
+      smtpUser.endsWith("@gmail.com");
 
     return nodemailer.createTransport(
       isGmail
@@ -72,7 +79,7 @@ const createEmailTransporter = () => {
             socketTimeout: 8000,
           }
         : {
-            host: smtpHost || "smtp.gmail.com",
+            host: smtpHost,
             port: smtpPort,
             secure: smtpPort === 465,
             pool: true,
@@ -104,10 +111,16 @@ const getTransporter = () => {
 
 // Unified Sender Function: Prioritizes Brevo HTTPS REST API -> Nodemailer SMTP
 const dispatchEmail = async ({ to, name, subject, html, fromName }) => {
+  const hasBrevo = Boolean(process.env.BREVO_API_KEY && process.env.BREVO_API_KEY.trim());
+  const hasSMTP = Boolean(process.env.SMTP_USER && process.env.SMTP_USER.trim());
+
+  console.log(`[EMAIL DISPATCH] Initiating email for ${to}. Available providers: Brevo=${hasBrevo}, SMTP=${hasSMTP}`);
+
   // 1. Try Brevo HTTPS REST API first
-  if (process.env.BREVO_API_KEY) {
+  if (hasBrevo) {
     const brevoResult = await sendViaBrevo(to, name, subject, html, fromName);
     if (brevoResult) return brevoResult;
+    console.warn("[EMAIL DISPATCH] Brevo attempt failed, checking fallback...");
   }
 
   // 2. Fallback to Nodemailer SMTP
