@@ -1,13 +1,22 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import API from "../api";
 import { MapPin } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import API from "../api";
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("session") === "expired") {
+      setInfo("Your session has expired. Please sign in again.");
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,13 +24,13 @@ export default function Login() {
     setLoading(true);
     try {
       const res = await API.post("/auth/login", form);
-      
+
       if (res.data.role !== "admin") {
         setError("You don't have permission to access the admin dashboard.");
         setLoading(false);
         return;
       }
-      
+
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.role);
       navigate("/");
@@ -40,9 +49,19 @@ export default function Login() {
             <div className="w-16 h-16 bg-indigo-600 rounded-full flex items-center justify-center text-white mb-4 shadow-lg">
               <MapPin size={28} fill="currentColor" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Admin Login</h1>
-            <p className="text-sm text-slate-500 mt-1">FoundIT Dashboard Access</p>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Admin Login
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              FoundIT Dashboard Access
+            </p>
           </div>
+
+          {info && (
+            <div className="mb-6 p-4 bg-amber-50 text-amber-700 rounded-lg text-sm font-medium border border-amber-200">
+              {info}
+            </div>
+          )}
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-lg text-sm font-medium border border-red-100">
@@ -52,7 +71,9 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Email Address</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Email Address
+              </label>
               <input
                 type="email"
                 value={form.email}
@@ -64,7 +85,9 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                Password
+              </label>
               <input
                 type="password"
                 value={form.password}
