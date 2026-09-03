@@ -453,12 +453,17 @@ router.patch("/profile", protect, async (req, res) => {
 
 // 🔍 DIAGNOSTIC: TEST EMAIL CONFIGURATION
 router.get("/test-email", async (req, res) => {
-  const targetEmail = req.query.email || process.env.SMTP_USER || "bereket2356@gmail.com";
+  const targetEmail =
+    req.query.email || process.env.SMTP_USER || "bereket2356@gmail.com";
   const smtpUserConfigured = Boolean(process.env.SMTP_USER);
   const smtpPassConfigured = Boolean(process.env.SMTP_PASS);
 
   try {
-    const result = await sendVerificationEmail(targetEmail, "Diagnostic Test", "999888");
+    const result = await sendVerificationEmail(
+      targetEmail,
+      "Diagnostic Test",
+      "999888",
+    );
     if (result && result.messageId) {
       return res.json({
         status: "success",
@@ -466,14 +471,17 @@ router.get("/test-email", async (req, res) => {
         messageId: result.messageId,
         smtpConfig: {
           host: process.env.SMTP_HOST || "default",
-          user: process.env.SMTP_USER ? `${process.env.SMTP_USER.slice(0, 3)}***` : "MISSING",
+          user: process.env.SMTP_USER
+            ? `${process.env.SMTP_USER.slice(0, 3)}***`
+            : "MISSING",
           passConfigured: smtpPassConfigured,
         },
       });
     } else {
       return res.status(500).json({
         status: "error",
-        message: "sendVerificationEmail returned null or fallback logger was used.",
+        message:
+          "sendVerificationEmail returned null or fallback logger was used.",
         smtpConfig: {
           smtpUserConfigured,
           smtpPassConfigured,
