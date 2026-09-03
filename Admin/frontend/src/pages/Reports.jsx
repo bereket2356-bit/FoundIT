@@ -17,6 +17,8 @@ import {
   AlertCircle,
   FileText
 } from "lucide-react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import API, { BASE_URL } from "../api";
 
 const DATE_RANGES = [
@@ -352,37 +354,6 @@ const Reports = () => {
     fetchReports();
   };
 
-  const handleExportPDF = async () => {
-    try {
-      setExporting(true);
-      let query = `/admin/reports/export-pdf?range=${selectedRange}`;
-      if (selectedRange === "custom" && customStart && customEnd) {
-        query += `&startDate=${encodeURIComponent(customStart)}&endDate=${encodeURIComponent(customEnd)}`;
-      }
-
-      const response = await API.get(query, {
-        responseType: "blob",
-      });
-
-      const blob = new Blob([response.data], { type: "application/pdf" });
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-
-      const dateStr = new Date().toISOString().split("T")[0];
-      link.download = `FoundIT_Report_${selectedRange}_${dateStr}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      console.error("Failed to export PDF", error);
-      alert("Failed to generate PDF report. Please try again.");
-    } finally {
-      setExporting(false);
-    }
-  };
-
   // 1. Calculate Total Items
   const calculatedTotalItems =
     data.kpis?.totalItems !== null && data.kpis?.totalItems !== undefined
@@ -454,6 +425,264 @@ const Reports = () => {
     }
     return [];
   }, [data.itemsReportedData, data.breakdownItems]);
+
+  // Robust Client-Side and Server-Side PDF Export
+  const handleExportPDF = async () => {
+    try {
+      setExporting(true);
+
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "pt",
+        format: "a4",
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 36;
+      const contentWidth = pageWidth - margin * 2;
+
+      // 1. BRANDED HEADER BANNER
+      doc.setFillColor(15, 23, 42); // Slate 900
+      doc.roundedRect(margin, margin, contentWidth, 54, 6, 6, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text("FoundIT", margin + 16, margin + 26);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(203, 213, 225);
+      doc.text(
+        "|   System Analytics & Official Activity Report",
+        margin + 80,
+        margin + 26
+      );
+
+      const dateStr = new Date().toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+      doc.setFontSize(8.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `Date Range: ${data.rangeLabel || (selectedRange === "all" ? "All Time" : selectedRange)}    •    Generated: ${dateStr}`,
+        margin + 16,
+        margin + 43
+      );
+
+      let curY = margin + 72;
+
+      // 2. EXECUTIVE SUMMARY & KPIS
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text("1. Executive Summary & KPIs", margin, curY);
+
+      curY += 12;
+
+      const cardW = (contentWidth - 20) / 3;
+      const cardH = 50;
+
+      const cards = [
+        {
+          title: "TOTAL ITEMS POSTED",
+          val: String(calculatedTotalItems ?? 0),
+          sub: "Across lost & found",
+        },
+        {
+          title: "TOTAL CLAIMS",
+          val: String(calculatedTotalClaims ?? 0),
+          sub: "Student claims",
+        },
+        {
+          title: "CLAIM APPROVAL RATE",
+          val: `${calculatedApprovalRate ?? 0}%`,
+          sub: "Resolved claims",
+        },
+        {
+          title: "AVG RESOLUTION TIME",
+          val: data.kpis?.avgResolutionTime || "< 1 day",
+          sub: "From post to decision",
+        },
+        {
+          title: "TOP CATEGORY",
+          val: topCategoryName || "None",
+          sub: `${topCategoryCount} items logged`,
+        },
+        {
+          title: "COMMON LOCATION",
+          val: topLocationName || "Campus Wide",
+          sub: "Hotspot area",
+        },
+      ];
+
+      cards.forEach((card, idx) => {
+        const col = idx % 3;
+        const row = Math.floor(idx / 3);
+        const x = margin + col * (cardW + 10);
+        const y = curY + row * (cardH + 8);
+
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(1);
+        doc.roundedRect(x, y, cardW, cardH, 4, 4, "FD");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.text(card.title, x + 8, y + 14);
+
+        doc.setFontSize(13);
+        doc.setTextColor(15, 23, 42);
+        doc.text(card.val, x + 8, y + 31);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(148, 163, 184);
+        doc.text(card.sub, x + 8, y + 43);
+      });
+
+      curY += 2 * (cardH + 8) + 16;
+
+      // 3. CATEGORY & CLAIM RESOLUTION SUMMARY
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text("2. Category & Resolution Breakdown", margin, curY);
+
+      curY += 14;
+
+      const catSummary = (data.topCategoriesData || [])
+        .slice(0, 4)
+        .map((c) => `${c.name}: ${c.value}`)
+        .join("   •   ");
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text(
+        `Top Categories: ${catSummary || "General data"}`,
+        margin + 6,
+        curY + 4
+      );
+
+      const approved =
+        data.claimResolutionData?.find((c) => c.name?.toLowerCase() === "approved")
+          ?.value || 0;
+      const rejected =
+        data.claimResolutionData?.find((c) => c.name?.toLowerCase() === "rejected")
+          ?.value || 0;
+      const pending =
+        data.claimResolutionData?.find((c) => c.name?.toLowerCase() === "pending")
+          ?.value || 0;
+      doc.text(
+        `Claim Decisions: ${approved} Approved   •   ${rejected} Rejected   •   ${pending} Pending`,
+        margin + 6,
+        curY + 16
+      );
+
+      curY += 30;
+
+      // 4. ITEMIZED ACTIVITY BREAKDOWN TABLE
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text("3. Itemized Activity Log", margin, curY);
+
+      curY += 8;
+
+      const tableRows = (data.breakdownItems || []).map((item) => [
+        item.createdAt
+          ? new Date(item.createdAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "-",
+        item.title || "Untitled",
+        (item.type || "lost").toUpperCase(),
+        item.category || "-",
+        item.status || "open",
+        item.location || "-",
+        item.user?.name || item.user?.email || "Anonymous",
+      ]);
+
+      autoTable(doc, {
+        startY: curY,
+        head: [
+          [
+            "DATE",
+            "ITEM TITLE",
+            "TYPE",
+            "CATEGORY",
+            "STATUS",
+            "LOCATION",
+            "REPORTED BY",
+          ],
+        ],
+        body:
+          tableRows.length > 0
+            ? tableRows
+            : [["-", "No items recorded in selected range.", "", "", "", "", ""]],
+        theme: "striped",
+        headStyles: {
+          fillColor: [241, 245, 249],
+          textColor: [51, 65, 85],
+          fontStyle: "bold",
+          fontSize: 7.5,
+        },
+        bodyStyles: {
+          fontSize: 7.5,
+          textColor: [51, 65, 85],
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        margin: { left: margin, right: margin, bottom: 40 },
+        styles: {
+          cellPadding: 4,
+          overflow: "linebreak",
+        },
+        columnStyles: {
+          0: { cellWidth: 55 },
+          1: { cellWidth: 125, fontStyle: "bold", textColor: [15, 23, 42] },
+          2: { cellWidth: 45, fontStyle: "bold" },
+          3: { cellWidth: 70 },
+          4: { cellWidth: 50 },
+          5: { cellWidth: 85 },
+          6: { cellWidth: 90 },
+        },
+        didDrawPage: (hookData) => {
+          const pageCount = doc.internal.getNumberOfPages();
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7.5);
+          doc.setTextColor(148, 163, 184);
+          doc.text(
+            "Generated by FoundIT Admin Dashboard",
+            margin,
+            pageHeight - 20
+          );
+          doc.text(
+            `Page ${hookData.pageNumber} of ${pageCount}`,
+            pageWidth - margin - 50,
+            pageHeight - 20
+          );
+        },
+      });
+
+      const fileDate = new Date().toISOString().split("T")[0];
+      doc.save(`FoundIT_Report_${fileDate}.pdf`);
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      alert("Failed to export PDF report. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Filter breakdown items
   const filteredBreakdown = (data.breakdownItems || []).filter((item) => {
