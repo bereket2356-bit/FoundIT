@@ -47,7 +47,11 @@
     },
     "extra": {
       "apiUrl": "https://foundit-n1ou.onrender.com/api",
-      "baseUrl": "https://foundit-n1ou.onrender.com"
+      "baseUrl": "https://foundit-n1ou.onrender.com",
+      "router": {},
+      "eas": {
+        "projectId": "4313643b-3b4c-4b6e-a530-90953aea1dff"
+      }
     }
   }
 }
