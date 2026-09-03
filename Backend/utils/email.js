@@ -6,10 +6,10 @@ const getSenderEmail = (name = "FoundIT Team") => {
   if (process.env.SMTP_FROM) return process.env.SMTP_FROM;
   if (process.env.BREVO_SENDER_EMAIL) return `"${name}" <${process.env.BREVO_SENDER_EMAIL}>`;
   if (process.env.SMTP_USER) return `"${name}" <${process.env.SMTP_USER}>`;
-  return `"${name}" <onboarding@resend.dev>`;
+  return `"${name}" <noreply@foundit.app>`;
 };
 
-// 1. Send via Brevo / Sendinblue REST API (HTTPS port 443 - zero domain restriction, instant)
+// 1. Send via Brevo REST API (HTTPS port 443 - zero domain restriction, instant cloud delivery)
 const sendViaBrevo = async (to, name, subject, html, fromName) => {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) return null;
@@ -44,42 +44,7 @@ const sendViaBrevo = async (to, name, subject, html, fromName) => {
   }
 };
 
-// 2. Send via Resend REST API (HTTPS port 443)
-const sendViaResend = async (to, subject, html, fromName) => {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return null;
-
-  try {
-    const fromAddress = process.env.SMTP_FROM || `${fromName} <onboarding@resend.dev>`;
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: [to],
-        subject: subject,
-        html: html,
-      }),
-    });
-
-    const data = await response.json();
-    if (response.ok && data.id) {
-      console.log(`[EMAIL REST RESEND SUCCESS] Sent to ${to} (id: ${data.id})`);
-      return { messageId: data.id, provider: "resend" };
-    } else {
-      console.error("[EMAIL RESEND ERROR]", data);
-      return null;
-    }
-  } catch (err) {
-    console.error("[EMAIL RESEND FETCH ERROR]", err.message);
-    return null;
-  }
-};
-
-// 3. Send via Nodemailer SMTP (For local environments / unblocked SMTP ports)
+// 2. Send via Nodemailer SMTP (For local environments / unblocked SMTP ports)
 const createEmailTransporter = () => {
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
@@ -137,21 +102,15 @@ const getTransporter = () => {
   return transporter;
 };
 
-// Unified Sender Function: Prioritizes Brevo -> Resend -> Nodemailer SMTP
+// Unified Sender Function: Prioritizes Brevo HTTPS REST API -> Nodemailer SMTP
 const dispatchEmail = async ({ to, name, subject, html, fromName }) => {
-  // 1. Try Brevo HTTPS REST API first (works on any recipient without domain setup)
+  // 1. Try Brevo HTTPS REST API first
   if (process.env.BREVO_API_KEY) {
     const brevoResult = await sendViaBrevo(to, name, subject, html, fromName);
     if (brevoResult) return brevoResult;
   }
 
-  // 2. Try Resend HTTPS REST API
-  if (process.env.RESEND_API_KEY) {
-    const resendResult = await sendViaResend(to, subject, html, fromName);
-    if (resendResult) return resendResult;
-  }
-
-  // 3. Fallback to Nodemailer SMTP
+  // 2. Fallback to Nodemailer SMTP
   const trans = getTransporter();
   if (trans) {
     try {
@@ -169,7 +128,7 @@ const dispatchEmail = async ({ to, name, subject, html, fromName }) => {
     }
   }
 
-  // 4. Dev console fallback
+  // 3. Dev console fallback
   console.warn(`[EMAIL DEV FALLBACK] No email service succeeded for ${to}`);
   return { messageId: `dev-${Date.now()}`, provider: "dev-logger" };
 };
