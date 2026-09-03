@@ -2,12 +2,13 @@
   <!-- Safe zone background for App Store / Play Store -->
   <rect width="1024" height="1024" fill="#F8FAFC" />
 
-  <g transform="translate(0, -20)">
+  <!-- Scaled-down and optically centered symbol (~60% of canvas) -->
+  <g transform="translate(512, 512) scale(0.68) translate(-512, -490)">
     <!-- Outer Location Pin -->
     <path 
       d="M512 180 C340 180 200 320 200 492 C200 660 470 820 500 838 C507 842 517 842 524 838 C554 820 824 660 824 492 C824 320 684 180 512 180 Z" 
       fill="none" 
-      stroke="#0F172A" 
+      stroke="#1E293B" 
       stroke-width="56" 
       stroke-linecap="round" 
       stroke-linejoin="round"
@@ -19,7 +20,7 @@
       cy="470" 
       r="150" 
       fill="#F8FAFC" 
-      stroke="#0F172A" 
+      stroke="#1E293B" 
       stroke-width="56" 
     />
 
@@ -29,7 +30,7 @@
       y1="578" 
       x2="770" 
       y2="728" 
-      stroke="#0F172A" 
+      stroke="#1E293B" 
       stroke-width="60" 
       stroke-linecap="round" 
     />
@@ -38,7 +39,7 @@
     <path 
       d="M448 472 L492 516 L580 424" 
       fill="none" 
-      stroke="#0F172A" 
+      stroke="#1E293B" 
       stroke-width="52" 
       stroke-linecap="round" 
       stroke-linejoin="round"

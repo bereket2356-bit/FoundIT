@@ -50,7 +50,9 @@ export default function ForgotPassword() {
         showAlert({
           type: "info",
           title: "Reset Code Sent",
-          message: data.message || "If an account exists, a 6-digit code has been sent.",
+          message:
+            data.message ||
+            "If an account exists, a 6-digit code has been sent.",
           buttonText: "Enter Code",
           onPress: () => setStep("reset"),
         });
@@ -187,7 +189,10 @@ export default function ForgotPassword() {
                 />
 
                 <TouchableOpacity
-                  style={[styles.button, loading && { backgroundColor: "#666" }]}
+                  style={[
+                    styles.button,
+                    loading && { backgroundColor: "#666" },
+                  ]}
                   onPress={handleRequestCode}
                   disabled={loading}
                 >
@@ -200,7 +205,13 @@ export default function ForgotPassword() {
                   style={{ marginTop: 12, alignItems: "center" }}
                   onPress={() => setStep("reset")}
                 >
-                  <Text style={{ color: "#4f46e5", fontSize: 13, fontWeight: "600" }}>
+                  <Text
+                    style={{
+                      color: "#4f46e5",
+                      fontSize: 13,
+                      fontWeight: "600",
+                    }}
+                  >
                     Already have a code? Reset password
                   </Text>
                 </TouchableOpacity>
@@ -261,7 +272,10 @@ export default function ForgotPassword() {
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.button, loading && { backgroundColor: "#666" }]}
+                  style={[
+                    styles.button,
+                    loading && { backgroundColor: "#666" },
+                  ]}
                   onPress={handleResetPassword}
                   disabled={loading}
                 >
