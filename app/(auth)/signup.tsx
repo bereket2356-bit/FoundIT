@@ -61,7 +61,8 @@ export default function SignUp() {
             if (userInfo.email) {
               handleGoogleSignup({
                 email: userInfo.email,
-                name: name.trim() || userInfo.name || userInfo.email.split("@")[0],
+                name:
+                  name.trim() || userInfo.name || userInfo.email.split("@")[0],
                 avatar: userInfo.picture,
               });
             } else {
