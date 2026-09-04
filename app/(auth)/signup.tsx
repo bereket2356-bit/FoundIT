@@ -21,9 +21,13 @@ import { useUser } from "../../context/Usercontext";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_CLIENT_ID =
+const GOOGLE_WEB_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
   "430665417535-a489v2co59gslqnptdb528mg0lvrhulp.apps.googleusercontent.com";
+
+const GOOGLE_ANDROID_CLIENT_ID =
+  process.env.EXPO_PUBLIC_ANDROID_GOOGLE_CLIENT_ID ||
+  "430665417535-j2se6nla3lop6ko8eokavqqvrdgnvite.apps.googleusercontent.com";
 
 export default function SignUp() {
   const [secure, setSecure] = useState(true);
@@ -34,29 +38,64 @@ export default function SignUp() {
   const { showAlert } = useAlert();
   const { updateUser } = useUser();
 
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
-    webClientId: GOOGLE_CLIENT_ID,
-    iosClientId: GOOGLE_CLIENT_ID,
-    redirectUri: "https://auth.expo.io/@bereket2356-bit/FoundIt",
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: GOOGLE_WEB_CLIENT_ID,
   });
 
   useEffect(() => {
     if (response?.type === "success") {
-      const { id_token } = response.params;
-      handleGoogleSignup(id_token);
+      const { authentication, params } = response;
+      const idToken = authentication?.idToken || (params as any)?.id_token;
+      const accessToken = authentication?.accessToken;
+
+      if (idToken) {
+        handleGoogleSignup({ idToken });
+      } else if (accessToken) {
+        fetch("https://www.googleapis.com/userinfo/v2/me", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        })
+          .then((res) => res.json())
+          .then((userInfo) => {
+            if (userInfo.email) {
+              handleGoogleSignup({
+                email: userInfo.email,
+                name: name.trim() || userInfo.name || userInfo.email.split("@")[0],
+                avatar: userInfo.picture,
+              });
+            } else {
+              handleGoogleSignup({ fallbackEmail: email });
+            }
+          })
+          .catch(() => handleGoogleSignup({ fallbackEmail: email }));
+      }
     }
   }, [response]);
 
-  const handleGoogleSignup = async (
-    idToken?: string,
-    fallbackEmail?: string,
-  ) => {
+  const handleGoogleSignup = async ({
+    idToken,
+    email: googleEmail,
+    name: googleName,
+    avatar: googleAvatar,
+    fallbackEmail,
+  }: {
+    idToken?: string;
+    email?: string;
+    name?: string;
+    avatar?: string;
+    fallbackEmail?: string;
+  }) => {
     try {
       const payload: any = {};
       if (idToken) {
         payload.idToken = idToken;
-      } else {
+      }
+      if (googleEmail) {
+        payload.email = googleEmail;
+        payload.name = googleName || name.trim() || googleEmail.split("@")[0];
+        payload.avatar = googleAvatar;
+      } else if (!idToken) {
         const userEmail = fallbackEmail || email.trim();
         if (!userEmail) {
           showAlert({
@@ -244,10 +283,10 @@ export default function SignUp() {
                   if (promptAsync) {
                     await promptAsync();
                   } else {
-                    handleGoogleSignup(undefined, email);
+                    handleGoogleSignup({ fallbackEmail: email });
                   }
                 } catch (e) {
-                  handleGoogleSignup(undefined, email);
+                  handleGoogleSignup({ fallbackEmail: email });
                 }
               }}
             >

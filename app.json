@@ -5,7 +5,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "foundit",
+    "scheme": [
+      "foundit",
+      "com.googleusercontent.apps.430665417535-j2se6nla3lop6ko8eokavqqvrdgnvite"
+    ],
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
