@@ -24,7 +24,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
-  "777294337139-uc75crta4s4k6tvlrlt6uvf0lfrl0908.apps.googleusercontent.com";
+  "430665417535-j2se6nla3lop6ko8eokavqqvrdgnvite.apps.googleusercontent.com";
 
 export default function Login() {
   const [secure, setSecure] = useState(true);
@@ -39,9 +39,7 @@ export default function Login() {
     iosClientId: GOOGLE_CLIENT_ID,
     androidClientId: GOOGLE_CLIENT_ID,
     webClientId: GOOGLE_CLIENT_ID,
-    redirectUri: makeRedirectUri({
-      scheme: "foundit",
-    }),
+    redirectUri: "https://auth.expo.io/@bereket2356-bit/FoundIt",
   });
 
   useEffect(() => {
