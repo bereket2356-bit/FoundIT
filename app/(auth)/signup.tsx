@@ -21,13 +21,9 @@ import { useUser } from "../../context/Usercontext";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const GOOGLE_WEB_CLIENT_ID =
+const GOOGLE_CLIENT_ID =
   process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID ||
   "430665417535-a489v2co59gslqnptdb528mg0lvrhulp.apps.googleusercontent.com";
-
-const GOOGLE_ANDROID_CLIENT_ID =
-  process.env.EXPO_PUBLIC_ANDROID_GOOGLE_CLIENT_ID ||
-  "430665417535-j2se6nla3lop6ko8eokavqqvrdgnvite.apps.googleusercontent.com";
 
 export default function SignUp() {
   const [secure, setSecure] = useState(true);
@@ -39,10 +35,9 @@ export default function SignUp() {
   const { updateUser } = useUser();
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: GOOGLE_WEB_CLIENT_ID,
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: GOOGLE_WEB_CLIENT_ID,
+    clientId: GOOGLE_CLIENT_ID,
+    webClientId: GOOGLE_CLIENT_ID,
+    iosClientId: GOOGLE_CLIENT_ID,
     redirectUri: "https://auth.expo.io/@bereket2356-bit/FoundIt",
   });
 
